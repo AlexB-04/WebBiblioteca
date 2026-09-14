@@ -1,3 +1,6 @@
+using Microsoft.EntityFrameworkCore;
+using WebBiblioteca.Data;
+
 namespace WebBiblioteca
 {
     public class Program
@@ -8,6 +11,12 @@ namespace WebBiblioteca
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+
+            builder.Services.AddDbContext<DataContext>(options =>
+            {
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("DefaultConnection"));
+            });
 
             var app = builder.Build();
 
