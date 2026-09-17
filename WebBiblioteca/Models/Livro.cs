@@ -11,5 +11,5 @@
         public int ExemplaresDisponiveis { get; set; }
         public int IdCategoria { get; set; }
         public Categoria? CategoriaAtual { get; set; }
-    }
+    } 
 }
