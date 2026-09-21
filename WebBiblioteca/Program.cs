@@ -18,6 +18,7 @@ namespace WebBiblioteca
             });
 
             builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
+            builder.Services.AddScoped<ILivroRepository, LivroRepository>();
 
             var app = builder.Build();
 
