@@ -47,8 +47,7 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("O nome da categoria é obrigatório.");
             }
 
-            bool categoriaJaExiste = _categoriaRepository.GetAll()
-                .Any(c => c.Nome == categoria.Nome);
+            bool categoriaJaExiste = _categoriaRepository.GetAll().Any(c => c.Nome == categoria.Nome);
 
             if (categoriaJaExiste)
             {
@@ -85,8 +84,7 @@ namespace WebBiblioteca.Controllers.API
                 return NotFound();
             }
 
-            bool categoriaJaExiste = _categoriaRepository.GetAll()
-                .Any(c => c.Nome == categoria.Nome && c.IdCategoria != id);
+            bool categoriaJaExiste = _categoriaRepository.GetAll().Any(c => c.Nome == categoria.Nome && c.IdCategoria != id);
 
             if (categoriaJaExiste)
             {
@@ -102,7 +100,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteCategoria(int id)
         {
             var categoria = await _categoriaRepository.GetByIdAsync(id);
 
