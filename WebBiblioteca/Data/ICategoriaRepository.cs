@@ -1,4 +1,5 @@
-﻿using WebBiblioteca.Models;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
 {
@@ -10,5 +11,6 @@ namespace WebBiblioteca.Data
         Task UpdateAsync(Categoria categoria);
         Task DeleteAsync(Categoria categoria);
         Task<bool> HasLivrosAsync(int id);
+        IEnumerable<SelectListItem> GetComboCategorias();
     }
 }

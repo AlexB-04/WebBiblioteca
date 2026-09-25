@@ -1,0 +1,43 @@
+@model WebBiblioteca.Models.LivroViewModel
+
+<div class="mb-3">
+    <label asp-for="Titulo" class="control-label">Título</label>
+    <input asp-for="Titulo" class="form-control" />
+    <span asp-validation-for="Titulo" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Autor" class="control-label"></label>
+    <input asp-for="Autor" class="form-control" />
+    <span asp-validation-for="Autor" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Editora" class="control-label"></label>
+    <input asp-for="Editora" class="form-control" />
+    <span asp-validation-for="Editora" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="AnoPublicacao" class="control-label">Ano de publicação</label>
+    <input asp-for="AnoPublicacao" type="number" min="1" class="form-control" />
+    <span asp-validation-for="AnoPublicacao" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="Genero" class="control-label">Género</label>
+    <input asp-for="Genero" class="form-control" />
+    <span asp-validation-for="Genero" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="ExemplaresDisponiveis" class="control-label">Exemplares disponíveis</label>
+    <input asp-for="ExemplaresDisponiveis" type="number" min="0" class="form-control" />
+    <span asp-validation-for="ExemplaresDisponiveis" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label asp-for="IdCategoria" class="control-label">Categoria</label>
+    <select asp-for="IdCategoria" asp-items="Model.Categorias" class="form-control"></select>
+    <span asp-validation-for="IdCategoria" class="text-danger"></span>
+</div>

@@ -1,0 +1,74 @@
+@model WebBiblioteca.Models.Livro
+
+@{
+    ViewData["Title"] = "Detalhes do livro";
+}
+
+<h1>Detalhes do livro</h1>
+
+<div>
+    <hr />
+
+    <div class="row">
+        <div class="col-md-8">
+            <dl class="row">
+                <dt class="col-sm-3">
+                    Título
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Titulo)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Autor
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Autor)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Editora
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Editora)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Ano de publicação
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.AnoPublicacao)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Género
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.Genero)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Exemplares disponíveis
+                </dt>
+                <dd class="col-sm-9">
+                    @Html.DisplayFor(model => model.ExemplaresDisponiveis)
+                </dd>
+
+                <dt class="col-sm-3">
+                    Categoria
+                </dt>
+                <dd class="col-sm-9">
+                    @if (Model.CategoriaAtual != null)
+                    {
+                        @Model.CategoriaAtual.Nome
+                    }
+                </dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.IdLivro" class="btn btn-warning">Editar</a>
+    <a asp-action="Index" class="btn btn-success">Voltar</a>
+</div>

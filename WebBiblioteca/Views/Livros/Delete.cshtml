@@ -1,0 +1,44 @@
+@model WebBiblioteca.Models.Livro
+
+@{
+    ViewData["Title"] = "Eliminar livro";
+}
+
+<h1>Eliminar livro</h1>
+
+<h3>Tem a certeza de que deseja eliminar este livro?</h3>
+
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+<dl class="row">
+    <dt class="col-sm-2">Título</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.Titulo)</dd>
+
+    <dt class="col-sm-2">Autor</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.Autor)</dd>
+
+    <dt class="col-sm-2">Editora</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.Editora)</dd>
+
+    <dt class="col-sm-2">Ano</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.AnoPublicacao)</dd>
+
+    <dt class="col-sm-2">Género</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.Genero)</dd>
+
+    <dt class="col-sm-2">Exemplares disponíveis</dt>
+    <dd class="col-sm-10">@Html.DisplayFor(model => model.ExemplaresDisponiveis)</dd>
+
+    <dt class="col-sm-2">Categoria</dt>
+    <dd class="col-sm-10">
+        @if (Model.CategoriaAtual != null)
+        {
+            @Model.CategoriaAtual.Nome
+        }
+    </dd>
+</dl>
+
+<form asp-action="Delete" asp-route-id="@Model.IdLivro" method="post">
+    <button type="submit" class="btn btn-danger">Eliminar</button>
+    <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+</form>

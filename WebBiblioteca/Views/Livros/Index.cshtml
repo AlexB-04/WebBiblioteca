@@ -1,0 +1,52 @@
+@model IEnumerable<WebBiblioteca.Models.Livro>
+
+@{
+    ViewData["Title"] = "Livros";
+}
+
+<h1>Livros</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Criar livro</a>
+</p>
+
+<div class="table-responsive">
+    <table class="table table-hover table-striped">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Autor</th>
+                <th>Editora</th>
+                <th>Ano</th>
+                <th>Género</th>
+                <th>Exemplares disponíveis</th>
+                <th>Categoria</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@Html.DisplayFor(modelItem => item.Titulo)</td>
+                    <td>@Html.DisplayFor(modelItem => item.Autor)</td>
+                    <td>@Html.DisplayFor(modelItem => item.Editora)</td>
+                    <td>@Html.DisplayFor(modelItem => item.AnoPublicacao)</td>
+                    <td>@Html.DisplayFor(modelItem => item.Genero)</td>
+                    <td>@Html.DisplayFor(modelItem => item.ExemplaresDisponiveis)</td>
+                    <td>
+                        @if (item.CategoriaAtual != null)
+                        {
+                            @item.CategoriaAtual.Nome
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        <a asp-action="Details" asp-route-id="@item.IdLivro" class="btn btn-primary">Detalhes</a>
+                        <a asp-action="Edit" asp-route-id="@item.IdLivro" class="btn btn-warning">Editar</a>
+                        <a asp-action="Delete" asp-route-id="@item.IdLivro" class="btn btn-danger">Eliminar</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

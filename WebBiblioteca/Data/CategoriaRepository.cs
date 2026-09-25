@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
@@ -45,6 +46,23 @@ namespace WebBiblioteca.Data
         public async Task<bool> HasLivrosAsync(int id)
         {
             return await _context.Livros.AnyAsync(l => l.IdCategoria == id);
+        }
+
+        public IEnumerable<SelectListItem> GetComboCategorias()
+        {
+            var list = _context.Categorias.Select(c => new SelectListItem
+            {
+                Text = c.Nome,
+                Value = c.IdCategoria.ToString()
+            }).OrderBy(c => c.Text).ToList();
+
+            list.Insert(0, new SelectListItem
+            {
+                Text = "(Selecione uma categoria...)",
+                Value = "0"
+            });
+
+            return list;
         }
     }
 }

@@ -195,7 +195,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteLivro(int id)
         {
             var livro = await _livroRepository.GetByIdAsync(id);
 
