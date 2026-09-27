@@ -14,6 +14,7 @@
     <table class="table table-hover table-striped">
         <thead>
             <tr>
+                <th>Capa</th>
                 <th>Título</th>
                 <th>Autor</th>
                 <th>Editora</th>
@@ -28,6 +29,20 @@
             @foreach (var item in Model)
             {
                 <tr>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.ImageUrl))
+                        {
+                            <img src="@Url.Content(item.ImageUrl)"
+                                 alt="Capa de @item.Titulo"
+                                 style="width:70px;max-width:100%;height:auto;" />
+                        }
+                        else
+                        {
+                            <img src="@Url.Content("~/images/noimage.jpg")"
+                                 alt="Livro sem capa"
+                                 style="width:70px;max-width:100%;height:auto;" />
+                        }
+                    </td>
                     <td>@Html.DisplayFor(modelItem => item.Titulo)</td>
                     <td>@Html.DisplayFor(modelItem => item.Autor)</td>
                     <td>@Html.DisplayFor(modelItem => item.Editora)</td>

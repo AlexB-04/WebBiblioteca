@@ -65,6 +65,21 @@
                 </dd>
             </dl>
         </div>
+
+        <div class="col-md-4">
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <img src="@Url.Content(Model.ImageUrl)"
+                     alt="Capa de @Model.Titulo"
+                     style="width:300px;max-width:100%;height:auto" />
+            }
+            else
+            {
+                <img src="@Url.Content("~/images/noimage.jpg")"
+                     alt="Livro sem capa"
+                     style="width:300px;max-width:100%;height:auto" />
+            }
+        </div>
     </div>
 </div>
 

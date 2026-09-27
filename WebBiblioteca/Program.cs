@@ -1,3 +1,4 @@
+using WebBiblioteca.Helpers;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
 
@@ -19,6 +20,7 @@ namespace WebBiblioteca
 
             builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
             builder.Services.AddScoped<ILivroRepository, LivroRepository>();
+            builder.Services.AddScoped<IImageHelper, ImageHelper>();
 
             var app = builder.Build();
 
@@ -31,6 +33,7 @@ namespace WebBiblioteca
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
             app.UseRouting();
 
             app.UseAuthorization();

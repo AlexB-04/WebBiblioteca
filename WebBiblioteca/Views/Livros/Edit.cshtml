@@ -8,18 +8,39 @@
 
 <div class="row">
     <div class="col-md-6">
-        <form asp-action="Edit" method="post">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
             <input type="hidden" asp-for="IdLivro" />
             <partial name="_Livro" />
 
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+            <p>Para manter a capa atual, deixe o campo da capa vazio.</p>
+
+            <div class="form-group">
+                <input type="submit" value="Guardar" class="btn btn-primary" />
+                <a asp-action="Index" class="btn btn-success">Voltar</a>
+            </div>
         </form>
+    </div>
+
+    <div class="col-md-4">
+        @if (!string.IsNullOrEmpty(Model.ImageUrl))
+        {
+            <img src="@Url.Content(Model.ImageUrl)"
+                 alt="Capa de @Model.Titulo"
+                 style="width:300px;max-width:100%;height:auto" />
+        }
+        else
+        {
+            <img src="@Url.Content("~/images/noimage.jpg")"
+                 alt="Livro sem capa"
+                 style="width:300px;max-width:100%;height:auto" />
+        }
     </div>
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

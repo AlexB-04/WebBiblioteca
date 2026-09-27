@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.IO;
 using WebBiblioteca.Data;
+using WebBiblioteca.Helpers;
 using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Controllers
@@ -9,11 +11,14 @@ namespace WebBiblioteca.Controllers
     {
         private readonly ILivroRepository _livroRepository;
         private readonly ICategoriaRepository _categoriaRepository;
+        private readonly IImageHelper _imageHelper;
 
-        public LivrosController(ILivroRepository livroRepository, ICategoriaRepository categoriaRepository)
+        public LivrosController(ILivroRepository livroRepository,
+            ICategoriaRepository categoriaRepository, IImageHelper imageHelper)
         {
             _livroRepository = livroRepository;
             _categoriaRepository = categoriaRepository;
+            _imageHelper = imageHelper;
         }
 
         public IActionResult Index()
@@ -117,21 +122,47 @@ namespace WebBiblioteca.Controllers
                 }
             }
 
+            if (model.ImageFile != null)
+            {
+                if (model.ImageFile.Length == 0)
+                {
+                    ModelState.AddModelError("ImageFile", "O ficheiro selecionado está vazio.");
+                }
+
+                if (model.ImageFile.Length > 5 * 1024 * 1024)
+                {
+                    ModelState.AddModelError("ImageFile", "A capa não pode ultrapassar 5 MB.");
+                }
+
+                if (model.ImageFile.ContentType != "image/jpeg")
+                {
+                    ModelState.AddModelError("ImageFile", "Selecione uma imagem JPEG (.jpg ou .jpeg).");
+                }
+            }
+
             if (ModelState.IsValid)
             {
-                var livro = new Livro
-                {
-                    Titulo = model.Titulo,
-                    Autor = model.Autor,
-                    Editora = model.Editora,
-                    AnoPublicacao = model.AnoPublicacao,
-                    Genero = model.Genero,
-                    ExemplaresDisponiveis = model.ExemplaresDisponiveis,
-                    IdCategoria = model.IdCategoria
-                };
-
                 try
                 {
+                    var path = string.Empty;
+
+                    if (model.ImageFile != null && model.ImageFile.Length > 0)
+                    {
+                        path = await _imageHelper.UploadImageAsync(model.ImageFile, "livros");
+                    }
+
+                    var livro = new Livro
+                    {
+                        Titulo = model.Titulo,
+                        Autor = model.Autor,
+                        Editora = model.Editora,
+                        AnoPublicacao = model.AnoPublicacao,
+                        Genero = model.Genero,
+                        ExemplaresDisponiveis = model.ExemplaresDisponiveis,
+                        IdCategoria = model.IdCategoria,
+                        ImageUrl = path
+                    };
+
                     await _livroRepository.CreateAsync(livro);
 
                     return RedirectToAction("Index");
@@ -139,6 +170,14 @@ namespace WebBiblioteca.Controllers
                 catch (DbUpdateException)
                 {
                     ModelState.AddModelError(string.Empty, "Não foi possível guardar o livro. Verifique os dados e a categoria.");
+                }
+                catch (IOException)
+                {
+                    ModelState.AddModelError("ImageFile", "Não foi possível guardar a capa. Selecione o ficheiro e tente novamente.");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    ModelState.AddModelError("ImageFile", "Não foi possível guardar a capa. Contacte o administrador.");
                 }
             }
 
@@ -171,6 +210,7 @@ namespace WebBiblioteca.Controllers
                 Genero = livro.Genero,
                 ExemplaresDisponiveis = livro.ExemplaresDisponiveis,
                 IdCategoria = livro.IdCategoria,
+                ImageUrl = livro.ImageUrl,
                 Categorias = _categoriaRepository.GetComboCategorias()
             };
 
@@ -187,6 +227,8 @@ namespace WebBiblioteca.Controllers
             {
                 return NotFound();
             }
+
+            model.ImageUrl = livroExistente.ImageUrl;
 
             if (string.IsNullOrWhiteSpace(model.Titulo))
             {
@@ -254,18 +296,44 @@ namespace WebBiblioteca.Controllers
                 }
             }
 
+            if (model.ImageFile != null)
+            {
+                if (model.ImageFile.Length == 0)
+                {
+                    ModelState.AddModelError("ImageFile", "O ficheiro selecionado está vazio.");
+                }
+
+                if (model.ImageFile.Length > 5 * 1024 * 1024)
+                {
+                    ModelState.AddModelError("ImageFile", "A capa não pode ultrapassar 5 MB.");
+                }
+
+                if (model.ImageFile.ContentType != "image/jpeg")
+                {
+                    ModelState.AddModelError("ImageFile", "Selecione uma imagem JPEG (.jpg ou .jpeg).");
+                }
+            }
+
             if (ModelState.IsValid)
             {
-                livroExistente.Titulo = model.Titulo;
-                livroExistente.Autor = model.Autor;
-                livroExistente.Editora = model.Editora;
-                livroExistente.AnoPublicacao = model.AnoPublicacao;
-                livroExistente.Genero = model.Genero;
-                livroExistente.ExemplaresDisponiveis = model.ExemplaresDisponiveis;
-                livroExistente.IdCategoria = model.IdCategoria;
-
                 try
                 {
+                    var path = livroExistente.ImageUrl;
+
+                    if (model.ImageFile != null && model.ImageFile.Length > 0)
+                    {
+                        path = await _imageHelper.UploadImageAsync(model.ImageFile, "livros");
+                    }
+
+                    livroExistente.Titulo = model.Titulo;
+                    livroExistente.Autor = model.Autor;
+                    livroExistente.Editora = model.Editora;
+                    livroExistente.AnoPublicacao = model.AnoPublicacao;
+                    livroExistente.Genero = model.Genero;
+                    livroExistente.ExemplaresDisponiveis = model.ExemplaresDisponiveis;
+                    livroExistente.IdCategoria = model.IdCategoria;
+                    livroExistente.ImageUrl = path;
+
                     await _livroRepository.UpdateAsync(livroExistente);
 
                     return RedirectToAction("Index");
@@ -273,6 +341,14 @@ namespace WebBiblioteca.Controllers
                 catch (DbUpdateException)
                 {
                     ModelState.AddModelError(string.Empty, "Não foi possível alterar o livro. Verifique os dados e a categoria.");
+                }
+                catch (IOException)
+                {
+                    ModelState.AddModelError("ImageFile", "Não foi possível guardar a capa. Selecione o ficheiro e tente novamente.");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    ModelState.AddModelError("ImageFile", "Não foi possível guardar a capa. Contacte o administrador.");
                 }
             }
 
