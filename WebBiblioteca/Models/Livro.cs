@@ -11,7 +11,6 @@
         public int ExemplaresDisponiveis { get; set; }
         public int IdCategoria { get; set; }
         public Categoria? CategoriaAtual { get; set; }
-
         public string? ImageUrl { get; set; }
     } 
 }

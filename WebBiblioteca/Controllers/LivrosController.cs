@@ -23,7 +23,7 @@ namespace WebBiblioteca.Controllers
 
         public IActionResult Index()
         {
-            return View(_livroRepository.GetAll().OrderBy(l => l.Titulo));
+            return View(_livroRepository.GetAll().OrderBy(livro => livro.Titulo));
         }
 
         public async Task<IActionResult> Details(int? id)
@@ -114,7 +114,7 @@ namespace WebBiblioteca.Controllers
 
             if (!string.IsNullOrWhiteSpace(model.Titulo) && !string.IsNullOrWhiteSpace(model.Autor))
             {
-                bool livroJaExiste = _livroRepository.GetAll().Any(l => l.Titulo == model.Titulo && l.Autor == model.Autor);
+                bool livroJaExiste = _livroRepository.GetAll().Any(outroLivro => outroLivro.Titulo == model.Titulo && outroLivro.Autor == model.Autor);
 
                 if (livroJaExiste)
                 {
@@ -286,9 +286,9 @@ namespace WebBiblioteca.Controllers
             if (!string.IsNullOrWhiteSpace(model.Titulo) && !string.IsNullOrWhiteSpace(model.Autor))
             {
                 bool livroJaExiste = _livroRepository.GetAll()
-                    .Any(l => l.Titulo == model.Titulo &&
-                              l.Autor == model.Autor &&
-                              l.IdLivro != model.IdLivro);
+                    .Any(outroLivro => outroLivro.Titulo == model.Titulo &&
+                                      outroLivro.Autor == model.Autor &&
+                                      outroLivro.IdLivro != model.IdLivro);
 
                 if (livroJaExiste)
                 {

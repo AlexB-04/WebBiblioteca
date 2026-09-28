@@ -84,7 +84,7 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("A categoria indicada não existe.");
             }
 
-            bool livroJaExiste = _livroRepository.GetAll().Any(l => l.Titulo == livro.Titulo && l.Autor == livro.Autor);
+            bool livroJaExiste = _livroRepository.GetAll().Any(outroLivro => outroLivro.Titulo == livro.Titulo && outroLivro.Autor == livro.Autor);
 
             if (livroJaExiste)
             {
@@ -163,9 +163,9 @@ namespace WebBiblioteca.Controllers.API
             }
 
             bool livroJaExiste = _livroRepository.GetAll()
-                .Any(l => l.Titulo == livro.Titulo &&
-                          l.Autor == livro.Autor &&
-                          l.IdLivro != id);
+                .Any(outroLivro => outroLivro.Titulo == livro.Titulo &&
+                                  outroLivro.Autor == livro.Autor &&
+                                  outroLivro.IdLivro != id);
 
             if (livroJaExiste)
             {

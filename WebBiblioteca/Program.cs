@@ -1,6 +1,8 @@
 using WebBiblioteca.Helpers;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
+using Microsoft.AspNetCore.Identity;
+using WebBiblioteca.Models;
 
 namespace WebBiblioteca
 {
@@ -18,8 +20,16 @@ namespace WebBiblioteca
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
             });
 
+            builder.Services.AddIdentity<User, IdentityRole>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddDefaultTokenProviders()
+            .AddEntityFrameworkStores<DataContext>();
+
             builder.Services.AddScoped<ICategoriaRepository, CategoriaRepository>();
             builder.Services.AddScoped<ILivroRepository, LivroRepository>();
+            builder.Services.AddScoped<ILeitorRepository, LeitorRepository>();
             builder.Services.AddScoped<IImageHelper, ImageHelper>();
 
             var app = builder.Build();
@@ -36,6 +46,7 @@ namespace WebBiblioteca
             app.UseStaticFiles();
             app.UseRouting();
 
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapStaticAssets();

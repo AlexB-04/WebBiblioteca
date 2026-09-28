@@ -28,7 +28,7 @@ namespace WebBiblioteca.Data
         {
             return await _context.Categorias
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.IdCategoria == id);
+                .FirstOrDefaultAsync(categoria => categoria.IdCategoria == id);
         }
 
         public async Task UpdateAsync(Categoria categoria)
@@ -45,16 +45,16 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> HasLivrosAsync(int id)
         {
-            return await _context.Livros.AnyAsync(l => l.IdCategoria == id);
+            return await _context.Livros.AnyAsync(livro => livro.IdCategoria == id);
         }
 
         public IEnumerable<SelectListItem> GetComboCategorias()
         {
-            var list = _context.Categorias.Select(c => new SelectListItem
+            var list = _context.Categorias.Select(categoria => new SelectListItem
             {
-                Text = c.Nome,
-                Value = c.IdCategoria.ToString()
-            }).OrderBy(c => c.Text).ToList();
+                Text = categoria.Nome,
+                Value = categoria.IdCategoria.ToString()
+            }).OrderBy(item => item.Text).ToList();
 
             list.Insert(0, new SelectListItem
             {

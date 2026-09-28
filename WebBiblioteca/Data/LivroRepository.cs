@@ -15,16 +15,16 @@ namespace WebBiblioteca.Data
         public IQueryable<Livro> GetAll()
         {
             return _context.Livros
-                .Include(l => l.CategoriaAtual)
+                .Include(livro => livro.CategoriaAtual)
                 .AsNoTracking();
         }
 
         public async Task<Livro?> GetByIdAsync(int id)
         {
             return await _context.Livros
-                .Include(l => l.CategoriaAtual)
+                .Include(livro => livro.CategoriaAtual)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(l => l.IdLivro == id);
+                .FirstOrDefaultAsync(livro => livro.IdLivro == id);
         }
 
         public async Task CreateAsync(Livro livro)
@@ -55,7 +55,7 @@ namespace WebBiblioteca.Data
         public async Task<bool> CategoriaExisteAsync(int id)
         {
             return await _context.Categorias
-                .AnyAsync(c => c.IdCategoria == id);
+                .AnyAsync(categoria => categoria.IdCategoria == id);
         }
     }
 }

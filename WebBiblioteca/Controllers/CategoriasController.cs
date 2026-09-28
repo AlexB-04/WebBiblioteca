@@ -17,7 +17,7 @@ namespace WebBiblioteca.Controllers
 
         public IActionResult Index()
         {
-            return View(_categoriaRepository.GetAll().OrderBy(c => c.Nome));
+            return View(_categoriaRepository.GetAll().OrderBy(categoria => categoria.Nome));
         }
 
         public IActionResult Create()
@@ -35,7 +35,7 @@ namespace WebBiblioteca.Controllers
             }
             else
             {
-                bool categoriaJaExiste = _categoriaRepository.GetAll().Any(c => c.Nome == categoria.Nome);
+                bool categoriaJaExiste = _categoriaRepository.GetAll().Any(outraCategoria => outraCategoria.Nome == categoria.Nome);
 
                 if (categoriaJaExiste)
                 {
@@ -91,8 +91,9 @@ namespace WebBiblioteca.Controllers
             else
             {
                 bool categoriaJaExiste = _categoriaRepository.GetAll()
-                    .Any(c => c.Nome == categoria.Nome &&
-                              c.IdCategoria != categoria.IdCategoria);
+                 .Any(outraCategoria =>
+                     outraCategoria.Nome == categoria.Nome &&
+                     outraCategoria.IdCategoria != categoria.IdCategoria);
 
                 if (categoriaJaExiste)
                 {
