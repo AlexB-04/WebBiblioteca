@@ -6,7 +6,7 @@ namespace WebBiblioteca.Data
 {
     public class DataContext : IdentityDbContext<User>
     {
-        public DataContext(DbContextOptions<DataContext> options) 
+        public DataContext(DbContextOptions<DataContext> options)
             : base(options)
         {
 
@@ -17,6 +17,10 @@ namespace WebBiblioteca.Data
         public DbSet<Livro> Livros { get; set; }
 
         public DbSet<Leitor> Leitores { get; set; }
+
+        public DbSet<Emprestimo> Emprestimos { get; set; }
+
+        public DbSet<EmprestimoDetalhe> EmprestimoDetalhes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -49,6 +53,30 @@ namespace WebBiblioteca.Data
                 .HasOne(leitor => leitor.User)
                 .WithMany()
                 .HasForeignKey(leitor => leitor.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Emprestimo>()
+                .HasKey(emprestimo => emprestimo.IdEmprestimo);
+
+            modelBuilder.Entity<Emprestimo>()
+                .HasOne(emprestimo => emprestimo.Leitor)
+                .WithMany()
+                .HasForeignKey(emprestimo => emprestimo.IdLeitor)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmprestimoDetalhe>()
+                .HasKey(detalhe => detalhe.IdEmprestimoDetalhe);
+
+            modelBuilder.Entity<EmprestimoDetalhe>()
+                .HasOne(detalhe => detalhe.Emprestimo)
+                .WithMany(emprestimo => emprestimo.Detalhes)
+                .HasForeignKey(detalhe => detalhe.IdEmprestimo)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmprestimoDetalhe>()
+                .HasOne(detalhe => detalhe.Livro)
+                .WithMany()
+                .HasForeignKey(detalhe => detalhe.IdLivro)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
