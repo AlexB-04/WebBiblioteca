@@ -22,6 +22,10 @@ namespace WebBiblioteca.Data
 
         public DbSet<EmprestimoDetalhe> EmprestimoDetalhes { get; set; }
 
+        public DbSet<EmprestimoAlteracao> EmprestimoAlteracoes { get; set; }
+
+        public DbSet<Penalizacao> Penalizacoes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -77,6 +81,38 @@ namespace WebBiblioteca.Data
                 .HasOne(detalhe => detalhe.Livro)
                 .WithMany()
                 .HasForeignKey(detalhe => detalhe.IdLivro)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmprestimoAlteracao>()
+                .HasKey(alteracao => alteracao.IdEmprestimoAlteracao);
+
+            modelBuilder.Entity<EmprestimoAlteracao>()
+                .HasOne(alteracao => alteracao.Emprestimo)
+                .WithMany(emprestimo => emprestimo.Alteracoes)
+                .HasForeignKey(alteracao => alteracao.IdEmprestimo)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Penalizacao>()
+                .HasKey(penalizacao => penalizacao.IdPenalizacao);
+
+            modelBuilder.Entity<Penalizacao>()
+                .Property(penalizacao => penalizacao.Valor)
+                .HasColumnType("decimal(10,2)");
+
+            modelBuilder.Entity<Penalizacao>()
+                .HasIndex(penalizacao => penalizacao.IdEmprestimoDetalhe)
+                .IsUnique();
+
+            modelBuilder.Entity<Penalizacao>()
+                .HasOne(penalizacao => penalizacao.Emprestimo)
+                .WithMany(emprestimo => emprestimo.Penalizacoes)
+                .HasForeignKey(penalizacao => penalizacao.IdEmprestimo)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Penalizacao>()
+                .HasOne(penalizacao => penalizacao.Detalhe)
+                .WithMany()
+                .HasForeignKey(penalizacao => penalizacao.IdEmprestimoDetalhe)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

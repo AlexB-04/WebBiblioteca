@@ -19,6 +19,14 @@ namespace WebBiblioteca.Models
         [Display(Name = "Prazo de devolução")]
         public DateTime PrazoDevolucao { get; set; }
 
+        public bool Eliminado { get; set; }
+
+        public DateTime? DataEliminacao { get; set; }
+
         public ICollection<EmprestimoDetalhe> Detalhes { get; set; } = new List<EmprestimoDetalhe>();
+
+        public ICollection<EmprestimoAlteracao> Alteracoes { get; set; } = new List<EmprestimoAlteracao>();
+
+        public ICollection<Penalizacao> Penalizacoes { get; set; } = new List<Penalizacao>();
     }
 }
