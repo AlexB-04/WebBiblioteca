@@ -26,6 +26,8 @@ namespace WebBiblioteca.Data
 
         public DbSet<Penalizacao> Penalizacoes { get; set; }
 
+        public DbSet<Reserva> Reservas { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -113,6 +115,21 @@ namespace WebBiblioteca.Data
                 .HasOne(penalizacao => penalizacao.Detalhe)
                 .WithMany()
                 .HasForeignKey(penalizacao => penalizacao.IdEmprestimoDetalhe)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Reserva>()
+                .HasKey(reserva => reserva.IdReserva);
+
+            modelBuilder.Entity<Reserva>()
+                .HasOne(reserva => reserva.Leitor)
+                .WithMany()
+                .HasForeignKey(reserva => reserva.IdLeitor)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Reserva>()
+                .HasOne(reserva => reserva.Livro)
+                .WithMany()
+                .HasForeignKey(reserva => reserva.IdLivro)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
