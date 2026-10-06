@@ -31,6 +31,7 @@ namespace WebBiblioteca
             builder.Services.AddScoped<ILivroRepository, LivroRepository>();
             builder.Services.AddScoped<ILeitorRepository, LeitorRepository>();
             builder.Services.AddScoped<IEmprestimoRepository, EmprestimoRepository>();
+            builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
             builder.Services.AddScoped<IImageHelper, ImageHelper>();
 
             var app = builder.Build();
