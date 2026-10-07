@@ -27,5 +27,7 @@ namespace WebBiblioteca.Models
 
         [Display(Name = "Disponível desde")]
         public DateTime? DataDisponivel { get; set; }
+
+        public ICollection<ReservaAlteracao> Alteracoes { get; set; } = new List<ReservaAlteracao>();
     }
 }

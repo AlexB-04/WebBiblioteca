@@ -28,6 +28,8 @@ namespace WebBiblioteca.Data
 
         public DbSet<Reserva> Reservas { get; set; }
 
+        public DbSet<ReservaAlteracao> ReservaAlteracoes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -130,6 +132,15 @@ namespace WebBiblioteca.Data
                 .HasOne(reserva => reserva.Livro)
                 .WithMany()
                 .HasForeignKey(reserva => reserva.IdLivro)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ReservaAlteracao>()
+                .HasKey(alteracao => alteracao.IdReservaAlteracao);
+
+            modelBuilder.Entity<ReservaAlteracao>()
+                .HasOne(alteracao => alteracao.Reserva)
+                .WithMany(reserva => reserva.Alteracoes)
+                .HasForeignKey(alteracao => alteracao.IdReserva)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

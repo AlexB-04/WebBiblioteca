@@ -65,7 +65,22 @@ namespace WebBiblioteca.Controllers.API
                     reserva.DataReserva,
                     reserva.Ordem,
                     reserva.Ativa,
-                    reserva.DataDisponivel
+                    reserva.DataDisponivel,
+                    Alteracoes = reserva.Alteracoes
+                        .OrderBy(alteracao => alteracao.DataAlteracao)
+                        .ThenBy(alteracao => alteracao.IdReservaAlteracao)
+                        .Select(alteracao => new
+                        {
+                            alteracao.IdReservaAlteracao,
+                            alteracao.DataAlteracao,
+                            alteracao.Acao,
+                            alteracao.IdLivroAnterior,
+                            alteracao.LivroAnterior,
+                            alteracao.IdLivroNovo,
+                            alteracao.LivroNovo,
+                            alteracao.OrdemAnterior,
+                            alteracao.OrdemNova
+                        }).ToList()
                 }).ToList());
             }
 
@@ -89,7 +104,22 @@ namespace WebBiblioteca.Controllers.API
                 reservaEncontrada.DataReserva,
                 reservaEncontrada.Ordem,
                 reservaEncontrada.Ativa,
-                reservaEncontrada.DataDisponivel
+                reservaEncontrada.DataDisponivel,
+                Alteracoes = reservaEncontrada.Alteracoes
+                    .OrderBy(alteracao => alteracao.DataAlteracao)
+                    .ThenBy(alteracao => alteracao.IdReservaAlteracao)
+                    .Select(alteracao => new
+                    {
+                        alteracao.IdReservaAlteracao,
+                        alteracao.DataAlteracao,
+                        alteracao.Acao,
+                        alteracao.IdLivroAnterior,
+                        alteracao.LivroAnterior,
+                        alteracao.IdLivroNovo,
+                        alteracao.LivroNovo,
+                        alteracao.OrdemAnterior,
+                        alteracao.OrdemNova
+                    }).ToList()
             });
         }
 
@@ -177,8 +207,163 @@ namespace WebBiblioteca.Controllers.API
                 reservaCriada.DataReserva,
                 reservaCriada.Ordem,
                 reservaCriada.Ativa,
-                reservaCriada.DataDisponivel
+                reservaCriada.DataDisponivel,
+                Alteracoes = reservaCriada.Alteracoes
+                    .OrderBy(alteracao => alteracao.DataAlteracao)
+                    .ThenBy(alteracao => alteracao.IdReservaAlteracao)
+                    .Select(alteracao => new
+                    {
+                        alteracao.IdReservaAlteracao,
+                        alteracao.DataAlteracao,
+                        alteracao.Acao,
+                        alteracao.IdLivroAnterior,
+                        alteracao.LivroAnterior,
+                        alteracao.IdLivroNovo,
+                        alteracao.LivroNovo,
+                        alteracao.OrdemAnterior,
+                        alteracao.OrdemNova
+                    }).ToList()
             });
+        }
+
+        [HttpPut]
+        [Route("{id}")]
+        public async Task<IActionResult> Put(int id, [FromBody] Reserva reserva)
+        {
+            if (reserva == null)
+            {
+                return BadRequest("Dados da reserva inválidos.");
+            }
+
+            var reservaExistente = await _reservaRepository.GetByIdAsync(id);
+
+            if (reservaExistente == null)
+            {
+                return NotFound();
+            }
+
+            if (!reservaExistente.Ativa)
+            {
+                return BadRequest("Não é possível alterar uma reserva inativa.");
+            }
+
+            if (reservaExistente.DataDisponivel.HasValue)
+            {
+                return BadRequest("Esta reserva já está disponível para levantamento. Cancele-a para reservar outro livro.");
+            }
+
+            if (reserva.IdLivro <= 0)
+            {
+                return BadRequest("Indique um livro válido.");
+            }
+
+            if (reservaExistente.IdLivro == reserva.IdLivro)
+            {
+                return BadRequest("A reserva já corresponde a este livro.");
+            }
+
+            var livro = await _livroRepository.GetByIdAsync(reserva.IdLivro);
+
+            if (livro == null)
+            {
+                return BadRequest("O livro indicado não existe.");
+            }
+
+            if (livro.ExemplaresDisponiveis > 0)
+            {
+                return BadRequest("Este livro ainda tem exemplares disponíveis. Deve ser feito um empréstimo.");
+            }
+
+            bool reservaJaExiste = await _reservaRepository
+                .ReservaAtivaExisteAsync(reservaExistente.IdLeitor, reserva.IdLivro);
+
+            if (reservaJaExiste)
+            {
+                return BadRequest("Este leitor já tem uma reserva ativa deste livro.");
+            }
+
+            try
+            {
+                // O ID da rota identifica a reserva; só o novo livro vem do Body.
+                bool alterada = await _reservaRepository.UpdateAsync(id, reserva.IdLivro);
+
+                if (!alterada)
+                {
+                    return BadRequest("Não foi possível alterar a reserva. Verifique o estado da reserva e o livro indicado.");
+                }
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível guardar a alteração da reserva. Verifique os dados associados.");
+            }
+
+            var reservaAtualizada = await _reservaRepository.GetByIdAsync(id);
+
+            if (reservaAtualizada == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new
+            {
+                reservaAtualizada.IdReserva,
+                reservaAtualizada.IdLeitor,
+                Leitor = reservaAtualizada.Leitor == null ? null : reservaAtualizada.Leitor.Nome,
+                reservaAtualizada.IdLivro,
+                Livro = reservaAtualizada.Livro == null ? null : reservaAtualizada.Livro.Titulo,
+                reservaAtualizada.DataReserva,
+                reservaAtualizada.Ordem,
+                reservaAtualizada.Ativa,
+                reservaAtualizada.DataDisponivel,
+                Alteracoes = reservaAtualizada.Alteracoes
+                    .OrderBy(alteracao => alteracao.DataAlteracao)
+                    .ThenBy(alteracao => alteracao.IdReservaAlteracao)
+                    .Select(alteracao => new
+                    {
+                        alteracao.IdReservaAlteracao,
+                        alteracao.DataAlteracao,
+                        alteracao.Acao,
+                        alteracao.IdLivroAnterior,
+                        alteracao.LivroAnterior,
+                        alteracao.IdLivroNovo,
+                        alteracao.LivroNovo,
+                        alteracao.OrdemAnterior,
+                        alteracao.OrdemNova
+                    }).ToList()
+            });
+        }
+
+        [HttpDelete]
+        [Route("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var reserva = await _reservaRepository.GetByIdAsync(id);
+
+            if (reserva == null)
+            {
+                return NotFound();
+            }
+
+            if (!reserva.Ativa)
+            {
+                return BadRequest("Esta reserva já está inativa.");
+            }
+
+            try
+            {
+                bool cancelada = await _reservaRepository.DeleteAsync(id);
+
+                if (!cancelada)
+                {
+                    return BadRequest("Não foi possível cancelar a reserva. Verifique o estado e os dados associados.");
+                }
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível guardar o cancelamento da reserva. Verifique os dados associados.");
+            }
+
+            return Ok();
         }
     }
 }
