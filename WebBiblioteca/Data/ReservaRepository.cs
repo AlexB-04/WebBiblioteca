@@ -64,7 +64,7 @@ namespace WebBiblioteca.Data
                 .AsNoTracking()
                 .FirstOrDefaultAsync(livroDaLista => livroDaLista.IdLivro == reserva.IdLivro);
 
-            if (livro == null || livro.ExemplaresDisponiveis > 0)
+            if (livro == null || await TemExemplaresLivresAsync(reserva.IdLivro))
             {
                 return false;
             }
@@ -126,7 +126,7 @@ namespace WebBiblioteca.Data
                 .AsNoTracking()
                 .FirstOrDefaultAsync(livro => livro.IdLivro == idLivro);
 
-            if (livroNovo == null || livroNovo.ExemplaresDisponiveis > 0)
+            if (livroNovo == null || await TemExemplaresLivresAsync(idLivro))
             {
                 return false;
             }
@@ -171,7 +171,7 @@ namespace WebBiblioteca.Data
                 OrdemNova = ordemNova
             });
 
-            await ReordenarFilaAsync(idLivroAnterior, reserva.IdReserva, livroAnterior.Titulo, agora);
+            await PrepararDisponibilidadeAsync(livroAnterior, agora, reserva.IdReserva);
 
             // A reserva, a fila e o histórico são guardados na mesma operação.
             await _context.SaveChangesAsync();
@@ -199,7 +199,6 @@ namespace WebBiblioteca.Data
             }
 
             DateTime agora = DateTime.Now;
-            bool estavaDisponivel = reserva.DataDisponivel.HasValue;
 
             // Cancelar conserva a reserva e os seus dados para consulta do histórico.
             reserva.Ativa = false;
@@ -217,39 +216,136 @@ namespace WebBiblioteca.Data
                 OrdemNova = reserva.Ordem
             });
 
-            var reservasRestantes = await ReordenarFilaAsync(
-                reserva.IdLivro, reserva.IdReserva, livro.Titulo, agora);
-
-            // Se havia um exemplar à espera deste leitor, passa ao próximo que ainda espera.
-            // A atribuição inicial de exemplares será ligada às devoluções na próxima etapa.
-            if (estavaDisponivel && livro.ExemplaresDisponiveis > 0)
-            {
-                var proximaReserva = reservasRestantes
-                    .FirstOrDefault(reservaDaLista => !reservaDaLista.DataDisponivel.HasValue);
-
-                if (proximaReserva != null)
-                {
-                    proximaReserva.DataDisponivel = agora;
-
-                    await _context.ReservaAlteracoes.AddAsync(new ReservaAlteracao
-                    {
-                        IdReserva = proximaReserva.IdReserva,
-                        DataAlteracao = agora,
-                        Acao = "Disponibilizacao",
-                        IdLivroAnterior = livro.IdLivro,
-                        LivroAnterior = livro.Titulo,
-                        IdLivroNovo = livro.IdLivro,
-                        LivroNovo = livro.Titulo,
-                        OrdemAnterior = proximaReserva.Ordem,
-                        OrdemNova = proximaReserva.Ordem
-                    });
-                }
-            }
+            // A disponibilidade libertada passa aos primeiros leitores da fila.
+            await PrepararDisponibilidadeAsync(livro, agora, reserva.IdReserva);
 
             // Cancelar uma reserva não é devolver um livro: os exemplares não aumentam.
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<bool> TemExemplaresLivresAsync(int idLivro)
+        {
+            var livro = await _context.Livros
+                .AsNoTracking()
+                .FirstOrDefaultAsync(livroDaLista => livroDaLista.IdLivro == idLivro);
+
+            if (livro == null || livro.ExemplaresDisponiveis <= 0)
+            {
+                return false;
+            }
+
+            int reservasAtivas = await _context.Reservas.CountAsync(reserva =>
+                reserva.IdLivro == idLivro && reserva.Ativa);
+
+            // Os exemplares na biblioteca atendem primeiro a fila de reservas.
+            return livro.ExemplaresDisponiveis > reservasAtivas;
+        }
+
+        public async Task<bool> PodeEmprestarAsync(int idLeitor, int idLivro)
+        {
+            var livro = await _context.Livros
+                .AsNoTracking()
+                .FirstOrDefaultAsync(livroDaLista => livroDaLista.IdLivro == idLivro);
+
+            if (livro == null || livro.ExemplaresDisponiveis <= 0)
+            {
+                return false;
+            }
+
+            var reservas = await _context.Reservas
+                .Where(reserva => reserva.IdLivro == idLivro && reserva.Ativa)
+                .OrderBy(reserva => reserva.Ordem)
+                .ThenBy(reserva => reserva.IdReserva)
+                .AsNoTracking()
+                .ToListAsync();
+
+            int posicao = 1;
+
+            foreach (var reserva in reservas)
+            {
+                if (reserva.IdLeitor == idLeitor)
+                {
+                    // Dois exemplares podem atender os dois primeiros leitores.
+                    return posicao <= livro.ExemplaresDisponiveis;
+                }
+
+                posicao++;
+            }
+
+            // Quem não está na fila só pode levar um exemplar que sobre.
+            return livro.ExemplaresDisponiveis > reservas.Count;
+        }
+
+        public async Task PrepararDisponibilidadeAsync(
+            Livro livro, DateTime agora, int idReservaIgnorada = 0)
+        {
+            var reservas = await ReordenarFilaAsync(
+                livro.IdLivro, idReservaIgnorada, livro.Titulo, agora);
+
+            int exemplaresPorAtribuir = livro.ExemplaresDisponiveis;
+
+            foreach (var reserva in reservas)
+            {
+                if (exemplaresPorAtribuir > 0)
+                {
+                    if (!reserva.DataDisponivel.HasValue)
+                    {
+                        reserva.DataDisponivel = agora;
+                        await RegistarAlteracaoAsync(reserva, livro, agora, "Disponibilizacao");
+                    }
+
+                    exemplaresPorAtribuir--;
+                }
+                else if (reserva.DataDisponivel.HasValue)
+                {
+                    // Se o stock foi reduzido, não manter uma disponibilidade inexistente.
+                    reserva.DataDisponivel = null;
+                    await RegistarAlteracaoAsync(reserva, livro, agora, "Indisponibilizacao");
+                }
+            }
+
+            // Não guardar aqui: a devolução/levantamento guarda também o stock e o histórico.
+        }
+
+        public async Task PrepararLevantamentoAsync(int idLeitor, Livro livro, DateTime agora)
+        {
+            var reserva = await _context.Reservas
+                .FirstOrDefaultAsync(reservaDaLista =>
+                    reservaDaLista.IdLeitor == idLeitor &&
+                    reservaDaLista.IdLivro == livro.IdLivro && reservaDaLista.Ativa);
+
+            int idReservaIgnorada = 0;
+
+            if (reserva != null)
+            {
+                // O empréstimo já foi validado e o seu exemplar já foi descontado.
+                reserva.Ativa = false;
+                idReservaIgnorada = reserva.IdReserva;
+
+                await RegistarAlteracaoAsync(reserva, livro, agora, "Levantamento");
+            }
+
+            // O stock recebido já é o stock depois do levantamento.
+            await PrepararDisponibilidadeAsync(livro, agora, idReservaIgnorada);
+        }
+
+        private async Task RegistarAlteracaoAsync(
+            Reserva reserva, Livro livro, DateTime agora, string acao)
+        {
+            await _context.ReservaAlteracoes.AddAsync(new ReservaAlteracao
+            {
+                IdReserva = reserva.IdReserva,
+                DataAlteracao = agora,
+                Acao = acao,
+                IdLivroAnterior = livro.IdLivro,
+                LivroAnterior = livro.Titulo,
+                IdLivroNovo = livro.IdLivro,
+                LivroNovo = livro.Titulo,
+                OrdemAnterior = reserva.Ordem,
+                OrdemNova = reserva.Ordem
+            });
         }
 
         private async Task<List<Reserva>> ReordenarFilaAsync(

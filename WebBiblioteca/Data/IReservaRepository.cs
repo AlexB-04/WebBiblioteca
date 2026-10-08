@@ -17,5 +17,15 @@ namespace WebBiblioteca.Data
         Task<bool> ReservaAtivaExisteAsync(int idLeitor, int idLivro);
 
         Task<bool> AtingiuLimiteReservasAsync(int idLeitor);
+
+        Task<bool> TemExemplaresLivresAsync(int idLivro);
+
+        Task<bool> PodeEmprestarAsync(int idLeitor, int idLivro);
+
+        // Estes dois métodos preparam alterações no mesmo DataContext.
+        // O método que os chama guarda tudo no seu SaveChangesAsync.
+        Task PrepararDisponibilidadeAsync(Livro livro, DateTime agora, int idReservaIgnorada = 0);
+
+        Task PrepararLevantamentoAsync(int idLeitor, Livro livro, DateTime agora);
     }
 }

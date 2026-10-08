@@ -155,9 +155,12 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("O livro indicado não existe.");
             }
 
-            if (livro.ExemplaresDisponiveis > 0)
+            bool temExemplaresLivres = await _reservaRepository
+                .TemExemplaresLivresAsync(livro.IdLivro);
+
+            if (temExemplaresLivres)
             {
-                return BadRequest("Este livro ainda tem exemplares disponíveis. Deve ser feito um empréstimo.");
+                return BadRequest("Este livro ainda tem exemplares livres para empréstimo.");
             }
 
             bool reservaJaExiste = await _reservaRepository
@@ -269,9 +272,12 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("O livro indicado não existe.");
             }
 
-            if (livro.ExemplaresDisponiveis > 0)
+            bool temExemplaresLivres = await _reservaRepository
+                .TemExemplaresLivresAsync(livro.IdLivro);
+
+            if (temExemplaresLivres)
             {
-                return BadRequest("Este livro ainda tem exemplares disponíveis. Deve ser feito um empréstimo.");
+                return BadRequest("Este livro ainda tem exemplares livres para empréstimo.");
             }
 
             bool reservaJaExiste = await _reservaRepository

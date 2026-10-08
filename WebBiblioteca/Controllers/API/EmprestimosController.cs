@@ -12,15 +12,18 @@ namespace WebBiblioteca.Controllers.API
         private readonly IEmprestimoRepository _emprestimoRepository;
         private readonly ILeitorRepository _leitorRepository;
         private readonly ILivroRepository _livroRepository;
+        private readonly IReservaRepository _reservaRepository;
 
         public EmprestimosController(
             IEmprestimoRepository emprestimoRepository,
             ILeitorRepository leitorRepository,
-            ILivroRepository livroRepository)
+            ILivroRepository livroRepository,
+            IReservaRepository reservaRepository)
         {
             _emprestimoRepository = emprestimoRepository;
             _leitorRepository = leitorRepository;
             _livroRepository = livroRepository;
+            _reservaRepository = reservaRepository;
         }
 
         [HttpGet]
@@ -318,6 +321,14 @@ namespace WebBiblioteca.Controllers.API
                 if (livro.ExemplaresDisponiveis <= 0)
                 {
                     return BadRequest("Um dos livros não tem exemplares disponíveis.");
+                }
+
+                bool podeEmprestar = await _reservaRepository
+                    .PodeEmprestarAsync(leitor.IdLeitor, livro.IdLivro);
+
+                if (!podeEmprestar)
+                {
+                    return BadRequest("Os exemplares de um dos livros estão destinados a outros leitores na fila de reservas.");
                 }
             }
 

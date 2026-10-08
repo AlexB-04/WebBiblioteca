@@ -6,10 +6,12 @@ namespace WebBiblioteca.Data
     public class EmprestimoRepository : IEmprestimoRepository
     {
         private readonly DataContext _context;
+        private readonly IReservaRepository _reservaRepository;
 
-        public EmprestimoRepository(DataContext context)
+        public EmprestimoRepository(DataContext context, IReservaRepository reservaRepository)
         {
             _context = context;
+            _reservaRepository = reservaRepository;
         }
 
         public IQueryable<Emprestimo> GetAll(bool incluirEliminados = false)
@@ -175,6 +177,18 @@ namespace WebBiblioteca.Data
                 return false;
             }
 
+            // Validar TODOS os livros antes de descontar stock ou concluir reservas.
+            foreach (var livro in livros)
+            {
+                bool podeEmprestar = await _reservaRepository
+                    .PodeEmprestarAsync(leitor.IdLeitor, livro.IdLivro);
+
+                if (!podeEmprestar)
+                {
+                    return false;
+                }
+            }
+
             var novoEmprestimo = new Emprestimo
             {
                 IdLeitor = leitor.IdLeitor,
@@ -186,6 +200,8 @@ namespace WebBiblioteca.Data
             {
                 livro.ExemplaresDisponiveis--;
 
+                await _reservaRepository.PrepararLevantamentoAsync(leitor.IdLeitor, livro, agora);
+
                 novoEmprestimo.Detalhes.Add(new EmprestimoDetalhe
                 {
                     IdLivro = livro.IdLivro,
@@ -195,6 +211,7 @@ namespace WebBiblioteca.Data
 
             await _context.Emprestimos.AddAsync(novoEmprestimo);
 
+            // O mesmo DataContext guarda empréstimo, detalhes, stock, reserva e histórico.
             await _context.SaveChangesAsync();
 
             emprestimo.IdEmprestimo = novoEmprestimo.IdEmprestimo;
@@ -275,7 +292,9 @@ namespace WebBiblioteca.Data
             detalhe.DataDevolucao = agora;
             detalhe.Livro.ExemplaresDisponiveis++;
 
-            // A devolução, o exemplar e a eventual penalização são guardados juntos.
+            await _reservaRepository.PrepararDisponibilidadeAsync(detalhe.Livro, agora);
+
+            // Devolução, exemplar, penalização e disponibilidade da fila são guardados juntos.
             await _context.SaveChangesAsync();
 
             return true;
