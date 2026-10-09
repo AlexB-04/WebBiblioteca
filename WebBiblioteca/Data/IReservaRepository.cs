@@ -4,6 +4,10 @@ namespace WebBiblioteca.Data
 {
     public interface IReservaRepository
     {
+        // Processar os prazos antes de consultar ou alterar a fila.
+        // Chamar antes de preparar outras alterações no DataContext.
+        Task AtualizarReservasExpiradasAsync();
+
         IQueryable<Reserva> GetAll();
 
         Task<Reserva?> GetByIdAsync(int id);

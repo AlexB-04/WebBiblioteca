@@ -230,6 +230,15 @@ namespace WebBiblioteca.Controllers.API
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Emprestimo emprestimo)
         {
+            try
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+            }
+
             if (emprestimo == null)
             {
                 return BadRequest("Dados do empréstimo inválidos.");

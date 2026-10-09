@@ -5,11 +5,61 @@ namespace WebBiblioteca.Data
 {
     public class ReservaRepository : IReservaRepository
     {
+        // O enunciado indica X dias na tarefa. Então vou manter os 3 dias da Biblioteca anterior.
+        private const int DiasLevantamento = 3;
         private readonly DataContext _context;
 
         public ReservaRepository(DataContext context)
         {
             _context = context;
+        }
+
+        public async Task AtualizarReservasExpiradasAsync()
+        {
+            DateTime agora = DateTime.Now;
+            DateTime limite = agora.AddDays(-DiasLevantamento);
+
+            // Só expira o prazo para levantar um exemplar já disponibilizado.
+            // Uma reserva que ainda aguarda uma devolução tem DataDisponivel = null.
+            var reservasExpiradas = await _context.Reservas
+                .Where(reserva => reserva.Ativa &&
+                    reserva.DataDisponivel.HasValue &&
+                    reserva.DataDisponivel.Value <= limite)
+                .ToListAsync();
+
+            if (reservasExpiradas.Count == 0)
+            {
+                return;
+            }
+
+            var idsLivros = reservasExpiradas
+                .Select(reserva => reserva.IdLivro)
+                .Distinct()
+                .ToList();
+
+            var livros = await _context.Livros
+                .Where(livro => idsLivros.Contains(livro.IdLivro))
+                .AsNoTracking()
+                .ToListAsync();
+
+            foreach (var livro in livros)
+            {
+                // Retirar todos os prazos vencidos deste livro antes de passar a fila.
+                foreach (var reserva in reservasExpiradas
+                    .Where(reservaDaLista => reservaDaLista.IdLivro == livro.IdLivro))
+                {
+                    reserva.Ativa = false;
+                    await RegistarAlteracaoAsync(reserva, livro, agora, "Expiracao");
+                }
+
+                // Os próximos leitores recebem o seu prazo a partir de agora.
+                // A expiração não altera ExemplaresDisponiveis.
+                await PrepararDisponibilidadeAsync(livro, agora);
+            }
+
+            // Expirações, posições e novas disponibilidades são guardadas em conjunto.
+            // Esta operação termina antes de se preparar um empréstimo ou devolução.
+            await _context.SaveChangesAsync();
         }
 
         public IQueryable<Reserva> GetAll()
@@ -47,6 +97,8 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> CreateAsync(Reserva reserva)
         {
+            await AtualizarReservasExpiradasAsync();
+
             if (reserva == null || reserva.IdLeitor <= 0 || reserva.IdLivro <= 0)
             {
                 return false;
@@ -107,12 +159,14 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> UpdateAsync(int id, int idLivro)
         {
+            await AtualizarReservasExpiradasAsync();
+
             if (id <= 0 || idLivro <= 0)
             {
                 return false;
             }
 
-            // Tracking: vamos alterar esta reserva e as posições da fila anterior.
+            // Tracking: vou alterar esta reserva e as posições da fila anterior.
             var reserva = await _context.Reservas
                 .FirstOrDefaultAsync(reservaDaLista => reservaDaLista.IdReserva == id);
 
@@ -181,6 +235,8 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> DeleteAsync(int id)
         {
+            await AtualizarReservasExpiradasAsync();
+
             var reserva = await _context.Reservas
                 .FirstOrDefaultAsync(reservaDaLista => reservaDaLista.IdReserva == id);
 
@@ -358,6 +414,12 @@ namespace WebBiblioteca.Data
                 .OrderBy(reserva => reserva.Ordem)
                 .ThenBy(reserva => reserva.IdReserva)
                 .ToListAsync();
+
+            // A consulta SQL ainda pode devolver reservas que acabámos de expirar.
+            // O tracking conserva Ativa = false nos objetos; filtramos antes de ordenar.
+            reservas = reservas
+                .Where(reserva => reserva.Ativa && reserva.IdLivro == idLivro)
+                .ToList();
 
             int ordem = 1;
 

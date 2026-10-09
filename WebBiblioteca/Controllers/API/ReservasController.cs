@@ -27,6 +27,15 @@ namespace WebBiblioteca.Controllers.API
         [Route("{id?}")]
         public async Task<IActionResult> GetReservas(int? id, int? idLeitor, int? idLivro, bool? ativa)
         {
+            try
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+            }
+
             if (id == null)
             {
                 var reservasFiltradas = _reservaRepository.GetAll();
@@ -126,6 +135,15 @@ namespace WebBiblioteca.Controllers.API
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] Reserva reserva)
         {
+            try
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+            }
+
             if (reserva == null)
             {
                 return BadRequest("Dados da reserva inválidos.");
@@ -233,6 +251,15 @@ namespace WebBiblioteca.Controllers.API
         [Route("{id}")]
         public async Task<IActionResult> Put(int id, [FromBody] Reserva reserva)
         {
+            try
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+            }
+
             if (reserva == null)
             {
                 return BadRequest("Dados da reserva inválidos.");
@@ -343,6 +370,15 @@ namespace WebBiblioteca.Controllers.API
         [Route("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            try
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+            }
+
             var reserva = await _reservaRepository.GetByIdAsync(id);
 
             if (reserva == null)

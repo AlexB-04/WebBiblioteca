@@ -86,6 +86,8 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> CreateAsync(Emprestimo emprestimo)
         {
+            await _reservaRepository.AtualizarReservasExpiradasAsync();
+
             if (emprestimo == null || emprestimo.Detalhes == null ||
                 emprestimo.Detalhes.Count == 0)
             {
@@ -221,6 +223,8 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> DevolverLivroAsync(int idEmprestimo, int idLivro)
         {
+            await _reservaRepository.AtualizarReservasExpiradasAsync();
+
             if (idEmprestimo <= 0 || idLivro <= 0)
             {
                 return false;
