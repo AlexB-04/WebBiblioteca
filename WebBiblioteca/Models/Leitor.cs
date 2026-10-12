@@ -30,6 +30,10 @@ namespace WebBiblioteca.Models
 
         public DateTime? BloqueadoAte { get; set; }
 
+        [Display(Name = "Código de leitor")]
+        [MaxLength(20)]
+        public string? CodigoLeitor { get; set; }
+
         public string? UserId { get; set; }
 
         public User? User { get; set; }

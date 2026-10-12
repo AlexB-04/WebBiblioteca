@@ -1,0 +1,36 @@
+using Microsoft.AspNetCore.Identity;
+using WebBiblioteca.Models;
+
+namespace WebBiblioteca.Helpers
+{
+    public interface IUserHelper
+    {
+        Task<User?> GetUserByEmailAsync(string email);
+
+        Task<IdentityResult> AddUserAsync(User user, string password);
+
+        Task<SignInResult> LoginAsync(LoginViewModel model);
+
+        Task LogoutAsync();
+
+        Task<User?> GetUserByIdAsync(string id);
+
+        Task<IList<User>> GetFuncionariosAsync();
+
+        Task<IdentityResult> RegisterLeitorAsync(User user, Leitor leitor);
+
+        Task<IdentityResult> CreateFuncionarioAsync(User user);
+
+        Task<IdentityResult> ApproveLeitorAsync(int idLeitor);
+
+        Task<string> GeneratePasswordResetTokenAsync(User user);
+
+        Task<IdentityResult> ResetPasswordAsync(User user, string token, string password);
+
+        Task<IdentityResult> CheckRoleAsync(string roleName);
+
+        Task<IdentityResult> AddUserToRoleAsync(User user, string roleName);
+
+        Task<bool> IsUserInRoleAsync(User user, string roleName);
+    }
+}

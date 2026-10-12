@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System.ComponentModel.DataAnnotations;
 
 namespace WebBiblioteca.Models
@@ -12,6 +12,10 @@ namespace WebBiblioteca.Models
         [Display(Name = "Apelido")]
         [MaxLength(50, ErrorMessage = "O campo {0} pode conter no máximo {1} caracteres.")]
         public string? LastName { get; set; }
+
+        public bool Aprovado { get; set; }
+
+        public bool DeveAlterarPassword { get; set; }
 
         [Display(Name = "Nome completo")]
         public string FullName => $"{FirstName} {LastName}";

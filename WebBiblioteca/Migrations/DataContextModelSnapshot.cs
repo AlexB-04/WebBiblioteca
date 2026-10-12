@@ -271,6 +271,10 @@ namespace WebBiblioteca.Migrations
                     b.Property<DateTime?>("BloqueadoAte")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("CodigoLeitor")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Contacto")
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
@@ -294,6 +298,10 @@ namespace WebBiblioteca.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("IdLeitor");
+
+                    b.HasIndex("CodigoLeitor")
+                        .IsUnique()
+                        .HasFilter("[CodigoLeitor] IS NOT NULL");
 
                     b.HasIndex("Email")
                         .IsUnique()
@@ -473,9 +481,15 @@ namespace WebBiblioteca.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
+                    b.Property<bool>("Aprovado")
+                        .HasColumnType("bit");
+
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("DeveAlterarPassword")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)

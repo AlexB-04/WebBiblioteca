@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
 using WebBiblioteca.Models;
@@ -7,6 +8,7 @@ namespace WebBiblioteca.Controllers.API
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Funcionario")]
     public class ReservasController : Controller
     {
         private readonly IReservaRepository _reservaRepository;
@@ -133,6 +135,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Post([FromBody] Reserva reserva)
         {
             try
@@ -248,6 +251,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         [Route("{id}")]
         public async Task<IActionResult> Put(int id, [FromBody] Reserva reserva)
         {
@@ -367,6 +371,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
+        [ValidateAntiForgeryToken]
         [Route("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -1,0 +1,47 @@
+@model WebBiblioteca.Models.LoginViewModel
+
+@{
+    ViewData["Title"] = "Iniciar sessão";
+}
+
+<h2>Iniciar sessão</h2>
+<p class="text-info">@TempData["AccountMessage"]</p>
+<p><a asp-action="Register">Registar leitor</a> | <a asp-action="RecoverPassword">Esqueceu-se da palavra-passe?</a></p>
+
+<div class="row">
+    <div class="col-md-4 offset-md-4">
+        <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewBag.ReturnUrl" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Username"></label>
+                <input asp-for="Username" class="form-control" autocomplete="username" />
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Password"></label>
+                <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <div class="form-check">
+                    <input asp-for="RememberMe" class="form-check-input" />
+                    <label asp-for="RememberMe" class="form-check-label"></label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Entrar" class="btn btn-success" />
+                <a asp-controller="Home" asp-action="Index" class="btn btn-primary">Voltar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

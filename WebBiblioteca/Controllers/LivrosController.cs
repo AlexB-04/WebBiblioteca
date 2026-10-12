@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
 using WebBiblioteca.Data;
@@ -7,6 +8,7 @@ using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Controllers
 {
+    [Authorize(Roles = "Admin,Funcionario")]
     public class LivrosController : Controller
     {
         private readonly ILivroRepository _livroRepository;
@@ -21,11 +23,13 @@ namespace WebBiblioteca.Controllers
             _imageHelper = imageHelper;
         }
 
+        [AllowAnonymous]
         public IActionResult Index()
         {
             return View(_livroRepository.GetAll().OrderBy(livro => livro.Titulo));
         }
 
+        [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)

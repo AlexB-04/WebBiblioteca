@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
 using WebBiblioteca.Models;
@@ -7,6 +8,7 @@ namespace WebBiblioteca.Controllers.API
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Funcionario")]
     public class EmprestimosController : Controller
     {
         private readonly IEmprestimoRepository _emprestimoRepository;
@@ -139,6 +141,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         [Route("{id}/prazo")]
         public async Task<IActionResult> AlterarPrazo(int id, [FromBody] Emprestimo dados)
         {
@@ -187,6 +190,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         [Route("{id}/penalizacoes/{idPenalizacao}/pagar")]
         public async Task<IActionResult> PagarPenalizacao(int id, int idPenalizacao)
         {
@@ -228,6 +232,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Post([FromBody] Emprestimo emprestimo)
         {
             try
@@ -414,6 +419,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         [Route("{id}")]
         public async Task<IActionResult> Put(int id, [FromBody] EmprestimoDetalhe detalhe)
         {
@@ -512,6 +518,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
+        [ValidateAntiForgeryToken]
         [Route("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

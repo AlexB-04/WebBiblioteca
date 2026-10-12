@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
@@ -6,6 +7,7 @@ using WebBiblioteca.Data;
 
 namespace WebBiblioteca.Controllers
 {
+    [Authorize(Roles = "Admin")]
     public class CategoriasController : Controller
     {
         private readonly ICategoriaRepository _categoriaRepository;
@@ -146,7 +148,7 @@ namespace WebBiblioteca.Controllers
 
             if (possuiLivros)
             {
-                ModelState.AddModelError(string.Empty,"Não é possível eliminar uma categoria com livros associados.");
+                ModelState.AddModelError(string.Empty, "Não é possível eliminar uma categoria com livros associados.");
 
                 return View("Delete", categoria);
             }

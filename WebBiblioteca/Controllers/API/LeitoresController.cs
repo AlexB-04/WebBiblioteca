@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
@@ -7,6 +8,7 @@ namespace WebBiblioteca.Controllers.API
 {
     [Route("api/[controller]/{id?}")]
     [ApiController]
+    [Authorize(Roles = "Funcionario")]
     public class LeitoresController : Controller
     {
         private readonly ILeitorRepository _leitorRepository;
@@ -72,6 +74,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Post([FromBody] Leitor leitor)
         {
             if (leitor == null)
@@ -147,6 +150,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Put(int id, [FromBody] Leitor leitor)
         {
             if (leitor == null)
@@ -206,6 +210,12 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("Já existe outro leitor com esse email.");
             }
 
+            if (leitorExistente.UserId != null &&
+                !string.Equals(leitorExistente.Email, leitor.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest("O email de uma conta associada deve ser alterado através da gestão da conta.");
+            }
+
             leitorExistente.Nome = leitor.Nome;
             leitorExistente.Contacto = leitor.Contacto;
             leitorExistente.Email = leitor.Email;
@@ -235,6 +245,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteLeitor(int id)
         {
             var leitor = await _leitorRepository.GetByIdAsync(id);
@@ -246,6 +257,11 @@ namespace WebBiblioteca.Controllers.API
 
             try
             {
+                if (leitor.UserId != null)
+                {
+                    return BadRequest("Este leitor tem uma conta associada. A eliminação conjunta deve ser efetuada através da gestão de contas.");
+                }
+
                 await _leitorRepository.DeleteAsync(leitor);
             }
             catch (DbUpdateException)

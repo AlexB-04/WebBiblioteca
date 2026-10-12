@@ -1,0 +1,26 @@
+@model IEnumerable<WebBiblioteca.Models.User>
+@{ ViewData["Title"] = "Funcionários"; }
+<h2>Funcionários</h2>
+<p class="text-info">@TempData["AccountMessage"]</p>
+<p><a asp-action="CreateFuncionario" class="btn btn-primary">Criar funcionário</a></p>
+<table class="table table-hover table-striped">
+    <thead><tr><th>Nome</th><th>Email</th><th>Estado</th><th>Ações</th></tr></thead>
+    <tbody>
+    @foreach (var funcionario in Model)
+    {
+        <tr>
+            <td>@funcionario.FullName</td><td>@funcionario.Email</td>
+            <td>@(funcionario.DeveAlterarPassword ? "Aguarda palavra-passe" : "Conta ativa")</td>
+            <td>
+                @if (funcionario.DeveAlterarPassword)
+                {
+                    <form asp-action="ResendInitialPassword" method="post">
+                        <input type="hidden" name="id" value="@funcionario.Id" />
+                        <button type="submit" class="btn btn-secondary">Reenviar email</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

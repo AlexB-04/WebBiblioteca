@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
@@ -51,6 +51,10 @@ namespace WebBiblioteca.Data
 
             modelBuilder.Entity<Leitor>()
                 .HasIndex(leitor => leitor.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<Leitor>()
+                .HasIndex(leitor => leitor.CodigoLeitor)
                 .IsUnique();
 
             modelBuilder.Entity<Leitor>()

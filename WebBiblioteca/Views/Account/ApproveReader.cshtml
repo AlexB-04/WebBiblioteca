@@ -1,0 +1,27 @@
+@model WebBiblioteca.Models.Leitor
+@{ ViewData["Title"] = "Confirmar leitor"; }
+<h2>Confirmar leitor</h2>
+<div asp-validation-summary="All" class="text-danger"></div>
+<p class="text-info">@ViewBag.Message</p>
+<dl class="row">
+    <dt class="col-sm-3">Nome</dt><dd class="col-sm-9">@Model.Nome</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd>
+    <dt class="col-sm-3">Contacto</dt><dd class="col-sm-9">@Model.Contacto</dd>
+    <dt class="col-sm-3">Tipo</dt><dd class="col-sm-9">@Model.TipoUtilizador</dd>
+    <dt class="col-sm-3">Código</dt><dd class="col-sm-9">@Model.CodigoLeitor</dd>
+</dl>
+@if (ViewBag.Approved == true)
+{
+    <p>O leitor já foi confirmado.</p>
+    <form asp-action="ResendInitialPassword" method="post">
+        <input type="hidden" name="id" value="@Model.UserId" />
+        <button type="submit" class="btn btn-secondary">Reenviar email inicial</button>
+    </form>
+}
+else
+{
+    <form asp-action="ApproveReader" asp-route-id="@Model.IdLeitor" method="post">
+        <button type="submit" class="btn btn-success">Confirmar leitor</button>
+    </form>
+}
+<a asp-action="Readers" class="btn btn-primary">Voltar</a>

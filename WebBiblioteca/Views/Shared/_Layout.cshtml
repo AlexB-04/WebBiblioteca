@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -26,12 +26,43 @@
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Categorias" asp-action="Index">Categorias</a>
-                        </li>
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Categorias" asp-action="Index">Categorias</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Readers">Contas de leitores</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Funcionarios">Funcionários</a>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Livros" asp-action="Index">Livros</a>
                         </li>
+                    </ul>
+                    <ul class="navbar-nav">
+                        @if (User.Identity != null && User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <span class="navbar-text text-dark">@User.Identity.Name</span>
+                            </li>
+                            <li class="nav-item">
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button type="submit" class="btn btn-link nav-link text-dark">Sair</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Login">Iniciar sessão</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Account" asp-action="Register">Registar leitor</a>
+                            </li>
+                        }
                     </ul>
                 </div>
             </div>

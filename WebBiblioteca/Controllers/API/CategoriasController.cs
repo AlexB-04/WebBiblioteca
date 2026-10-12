@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
 using WebBiblioteca.Models;
@@ -7,6 +8,7 @@ namespace WebBiblioteca.Controllers.API
 {
     [Route("api/[controller]/{id?}")]
     [ApiController]
+    [Authorize(Roles = "Admin")]
     public class CategoriasController : Controller
     {
         private ICategoriaRepository _categoriaRepository;
@@ -17,6 +19,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetCategorias(int? id)
         {
             if (id == null)
@@ -35,6 +38,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Post([FromBody] Categoria categoria)
         {
             if (categoria == null)
@@ -65,6 +69,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Put(int id, [FromBody] Categoria categoria)
         {
             if (categoria == null)
@@ -100,6 +105,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteCategoria(int id)
         {
             var categoria = await _categoriaRepository.GetByIdAsync(id);

@@ -29,11 +29,40 @@ namespace WebBiblioteca.Data
             leitor.IdLeitor = 0;
             leitor.Atrasos = 0;
             leitor.BloqueadoAte = null;
+            leitor.CodigoLeitor = null;
             leitor.UserId = null;
             leitor.User = null;
 
             await _context.Leitores.AddAsync(leitor);
             await _context.SaveChangesAsync();
+        }
+
+        // Usado apenas pelo registo de contas, com UserId atribuído pelo servidor.
+        public async Task CreateWithUserAsync(Leitor leitor)
+        {
+            leitor.IdLeitor = 0;
+            leitor.Atrasos = 0;
+            leitor.BloqueadoAte = null;
+            leitor.CodigoLeitor = null;
+            leitor.User = null;
+
+            await _context.Leitores.AddAsync(leitor);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Leitor?> GetByUserIdAsync(string userId)
+        {
+            return await _context.Leitores.AsNoTracking()
+                .FirstOrDefaultAsync(leitor => leitor.UserId == userId);
+        }
+
+        public async Task<List<Leitor>> GetRegisteredReadersAsync()
+        {
+            return await _context.Leitores.AsNoTracking()
+                .Include(leitor => leitor.User)
+                .Where(leitor => leitor.User != null)
+                .OrderBy(leitor => leitor.Nome)
+                .ToListAsync();
         }
 
         public async Task UpdateAsync(Leitor leitor)

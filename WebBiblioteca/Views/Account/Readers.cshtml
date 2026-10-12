@@ -1,0 +1,30 @@
+@model IEnumerable<WebBiblioteca.Models.Leitor>
+@{ ViewData["Title"] = "Contas de leitores"; }
+<h2>Contas de leitores</h2>
+<p class="text-info">@TempData["AccountMessage"]</p>
+<table class="table table-hover table-striped">
+    <thead><tr><th>Nome</th><th>Email</th><th>Tipo</th><th>Código</th><th>Estado</th><th>Ações</th></tr></thead>
+    <tbody>
+    @foreach (var leitor in Model)
+    {
+        <tr>
+            <td>@leitor.Nome</td><td>@leitor.Email</td><td>@leitor.TipoUtilizador</td><td>@leitor.CodigoLeitor</td>
+            <td>
+                @if (leitor.User?.Aprovado != true) { <span>Aguarda confirmação</span> }
+                else if (leitor.User.DeveAlterarPassword) { <span>Aguarda palavra-passe</span> }
+                else { <span>Conta ativa</span> }
+            </td>
+            <td>
+                <a asp-action="ApproveReader" asp-route-id="@leitor.IdLeitor" class="btn btn-primary">Detalhes</a>
+                @if (leitor.User?.Aprovado == true && leitor.User.DeveAlterarPassword)
+                {
+                    <form asp-action="ResendInitialPassword" method="post">
+                        <input type="hidden" name="id" value="@leitor.UserId" />
+                        <button type="submit" class="btn btn-secondary">Reenviar email</button>
+                    </form>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

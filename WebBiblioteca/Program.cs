@@ -8,7 +8,7 @@ namespace WebBiblioteca
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -33,6 +33,15 @@ namespace WebBiblioteca
             builder.Services.AddScoped<IEmprestimoRepository, EmprestimoRepository>();
             builder.Services.AddScoped<IReservaRepository, ReservaRepository>();
             builder.Services.AddScoped<IImageHelper, ImageHelper>();
+            builder.Services.AddScoped<IUserHelper, UserHelper>();
+            builder.Services.AddScoped<IMailHelper, MailHelper>();
+            builder.Services.AddScoped<SeedDb>();
+
+            builder.Services.ConfigureApplicationCookie(options =>
+            {
+                options.LoginPath = "/Account/Login";
+                options.AccessDeniedPath = "/Account/NotAuthorized";
+            });
 
             var app = builder.Build();
 
@@ -57,7 +66,13 @@ namespace WebBiblioteca
                 pattern: "{controller=Home}/{action=Index}/{id?}")
                 .WithStaticAssets();
 
-            app.Run();
+            using (var scope = app.Services.CreateScope())
+            {
+                var seedDb = scope.ServiceProvider.GetRequiredService<SeedDb>();
+                await seedDb.SeedAsync();
+            }
+
+            await app.RunAsync();
         }
     }
 }

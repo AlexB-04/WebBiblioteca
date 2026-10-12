@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
 using WebBiblioteca.Models;
@@ -7,6 +8,7 @@ namespace WebBiblioteca.Controllers.API
 {
     [Route("api/[controller]/{id?}")]
     [ApiController]
+    [Authorize(Roles = "Admin,Funcionario")]
     public class LivrosController : Controller
     {
         private readonly ILivroRepository _livroRepository;
@@ -17,6 +19,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetLivros(int? id)
         {
             if (id == null)
@@ -35,6 +38,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Post([FromBody] Livro livro)
         {
             if (livro == null)
@@ -106,6 +110,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpPut]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Put(int id, [FromBody] Livro livro)
         {
             if (livro == null)
@@ -195,6 +200,7 @@ namespace WebBiblioteca.Controllers.API
         }
 
         [HttpDelete]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteLivro(int id)
         {
             var livro = await _livroRepository.GetByIdAsync(id);
