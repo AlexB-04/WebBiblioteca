@@ -227,6 +227,121 @@ namespace WebBiblioteca.Controllers
             return RedirectToAction("Funcionarios");
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> EditFuncionario(string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return NotFound();
+            }
+
+            var funcionario = await _userHelper.GetUserByIdAsync(id);
+            if (funcionario == null ||
+                !await _userHelper.IsUserInRoleAsync(funcionario, "Funcionario") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Admin") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Leitor"))
+            {
+                return NotFound();
+            }
+
+            var model = new EditFuncionarioViewModel
+            {
+                Id = funcionario.Id,
+                Nome = funcionario.FirstName ?? string.Empty,
+                Apelido = funcionario.LastName ?? string.Empty,
+                Email = funcionario.Email ?? string.Empty,
+                PhoneNumber = funcionario.PhoneNumber ?? string.Empty
+            };
+
+            return View(model);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditFuncionario([FromRoute] string? id, EditFuncionarioViewModel model)
+        {
+            if (string.IsNullOrWhiteSpace(id) || id != model.Id)
+            {
+                return NotFound();
+            }
+
+            var funcionario = await _userHelper.GetUserByIdAsync(id);
+            if (funcionario == null ||
+                !await _userHelper.IsUserInRoleAsync(funcionario, "Funcionario") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Admin") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Leitor"))
+            {
+                return NotFound();
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            string email = model.Email.Trim();
+            var outroUser = await _userHelper.GetUserByEmailAsync(email);
+            bool emailDeLeitor = await _leitorRepository.GetAll()
+                .AnyAsync(leitor => leitor.Email != null && leitor.Email.ToUpper() == email.ToUpper());
+
+            if ((outroUser != null && outroUser.Id != funcionario.Id) || emailDeLeitor)
+            {
+                ModelState.AddModelError("Email", "Este email já está registado.");
+                return View(model);
+            }
+
+            bool emailAlterado = !string.Equals(funcionario.Email, email, StringComparison.OrdinalIgnoreCase);
+
+            try
+            {
+                var result = await _userHelper.UpdateFuncionarioAsync(funcionario, model);
+                if (!result.Succeeded)
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        if (error.Code == "DuplicateEmail" || error.Code == "DuplicateUserName")
+                        {
+                            ModelState.AddModelError("Email", "Este email já está registado.");
+                        }
+                        else if (error.Code == "InvalidEmail" || error.Code == "InvalidUserName")
+                        {
+                            ModelState.AddModelError("Email", "Este email não pode ser utilizado para iniciar sessão.");
+                        }
+                        else if (error.Code == "ConcurrencyFailure")
+                        {
+                            ModelState.AddModelError(string.Empty, "Os dados foram alterados por outro pedido. Volte à lista e abra novamente o funcionário.");
+                        }
+                        else
+                        {
+                            ModelState.AddModelError(string.Empty, "Não foi possível alterar o funcionário. Verifique os dados e tente novamente.");
+                        }
+                    }
+                    return View(model);
+                }
+            }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Não foi possível guardar as alterações. Verifique o email e tente novamente.");
+                return View(model);
+            }
+
+            if (emailAlterado)
+            {
+                var response = await SendPasswordEmailAsync(funcionario, null);
+                TempData["AccountMessage"] = response.IsSuccess
+                    ? "Funcionário alterado. Foi preparado um email para definir a palavra-passe no novo endereço antes de voltar a iniciar sessão."
+                    : "Funcionário alterado, mas o email não foi enviado. Corrija a configuração e use Reenviar email para ativar o novo endereço.";
+            }
+            else
+            {
+                TempData["AccountMessage"] = "Funcionário alterado com sucesso.";
+            }
+
+            return RedirectToAction("Funcionarios");
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]

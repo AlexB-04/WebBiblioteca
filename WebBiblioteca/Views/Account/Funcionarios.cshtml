@@ -12,6 +12,9 @@
             <td>@funcionario.FullName</td><td>@funcionario.Email</td>
             <td>@(funcionario.DeveAlterarPassword ? "Aguarda palavra-passe" : "Conta ativa")</td>
             <td>
+                <a asp-action="EditFuncionario"
+                   asp-route-id="@funcionario.Id"
+                   class="btn btn-warning">Editar</a>
                 @if (funcionario.DeveAlterarPassword)
                 {
                     <form asp-action="ResendInitialPassword" method="post">

@@ -84,6 +84,64 @@ namespace WebBiblioteca.Helpers
             return await CreateAccountAsync(user, null, "Funcionario");
         }
 
+        public async Task<IdentityResult> UpdateFuncionarioAsync(User funcionario, EditFuncionarioViewModel model)
+        {
+            if (!await _userManager.IsInRoleAsync(funcionario, "Funcionario") ||
+                await _userManager.IsInRoleAsync(funcionario, "Admin") ||
+                await _userManager.IsInRoleAsync(funcionario, "Leitor"))
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "InvalidFuncionario",
+                    Description = "Esta conta não pode ser alterada na gestão de funcionários."
+                });
+            }
+
+            string email = model.Email.Trim();
+            string contacto = model.PhoneNumber.Trim();
+            bool emailAlterado = !string.Equals(funcionario.Email, email, StringComparison.OrdinalIgnoreCase);
+
+            // Guardar os dados e invalidar os links antigos na mesma operação.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
+            funcionario.FirstName = model.Nome.Trim();
+            funcionario.LastName = model.Apelido.Trim();
+            funcionario.Email = email;
+            funcionario.UserName = email;
+
+            if (funcionario.PhoneNumber != contacto)
+            {
+                funcionario.PhoneNumberConfirmed = false;
+            }
+            funcionario.PhoneNumber = contacto;
+
+            if (emailAlterado)
+            {
+                funcionario.EmailConfirmed = false;
+                funcionario.DeveAlterarPassword = true;
+            }
+
+            // Identity também atualiza os valores normalizados usados no login.
+            var result = await _userManager.UpdateAsync(funcionario);
+            if (!result.Succeeded)
+            {
+                return result;
+            }
+
+            if (emailAlterado)
+            {
+                // Um link emitido antes da mudança não deve ativar o novo email.
+                result = await _userManager.UpdateSecurityStampAsync(funcionario);
+                if (!result.Succeeded)
+                {
+                    return result;
+                }
+            }
+
+            await transaction.CommitAsync();
+            return IdentityResult.Success;
+        }
+
         private async Task<IdentityResult> CreateAccountAsync(User user, Leitor? leitor, string role)
         {
             // User, role e Leitor pertencem à mesma operação na mesma base de dados.
