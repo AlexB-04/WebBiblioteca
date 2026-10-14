@@ -342,6 +342,75 @@ namespace WebBiblioteca.Controllers
             return RedirectToAction("Funcionarios");
         }
 
+        [HttpGet]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteFuncionario([FromRoute] string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return NotFound();
+            }
+
+            var funcionario = await _userHelper.GetUserByIdAsync(id);
+            if (funcionario == null ||
+                !await _userHelper.IsUserInRoleAsync(funcionario, "Funcionario") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Admin") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Leitor"))
+            {
+                return NotFound();
+            }
+
+            return View(funcionario);
+        }
+
+        [HttpPost, ActionName("DeleteFuncionario")]
+        [Authorize(Roles = "Admin")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteFuncionarioConfirmed([FromRoute] string? id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return NotFound();
+            }
+
+            var funcionario = await _userHelper.GetUserByIdAsync(id);
+            if (funcionario == null ||
+                !await _userHelper.IsUserInRoleAsync(funcionario, "Funcionario") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Admin") ||
+                await _userHelper.IsUserInRoleAsync(funcionario, "Leitor"))
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                var result = await _userHelper.DeleteFuncionarioAsync(funcionario);
+                if (!result.Succeeded)
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        if (error.Code == "ConcurrencyFailure")
+                        {
+                            ModelState.AddModelError(string.Empty, "Os dados foram alterados por outro pedido. Volte à lista e abra novamente o funcionário.");
+                        }
+                        else
+                        {
+                            ModelState.AddModelError(string.Empty, error.Description);
+                        }
+                    }
+                    return View("DeleteFuncionario", funcionario);
+                }
+            }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Não foi possível eliminar o funcionário. Verifique os dados associados e tente novamente.");
+                return View("DeleteFuncionario", funcionario);
+            }
+
+            TempData["AccountMessage"] = "Funcionário eliminado com sucesso.";
+            return RedirectToAction("Funcionarios");
+        }
+
         [HttpPost]
         [Authorize(Roles = "Admin")]
         [ValidateAntiForgeryToken]

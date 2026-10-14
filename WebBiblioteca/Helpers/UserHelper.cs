@@ -142,6 +142,32 @@ namespace WebBiblioteca.Helpers
             return IdentityResult.Success;
         }
 
+        public async Task<IdentityResult> DeleteFuncionarioAsync(User funcionario)
+        {
+            if (!await _userManager.IsInRoleAsync(funcionario, "Funcionario") ||
+                await _userManager.IsInRoleAsync(funcionario, "Admin") ||
+                await _userManager.IsInRoleAsync(funcionario, "Leitor"))
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "InvalidFuncionario",
+                    Description = "Esta conta não pode ser eliminada na gestão de funcionários."
+                });
+            }
+
+            if (await _context.Leitores.AnyAsync(leitor => leitor.UserId == funcionario.Id))
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "LeitorAssociado",
+                    Description = "Não é possível eliminar este funcionário porque tem uma ficha de leitor associada."
+                });
+            }
+
+            // A conta é eliminada através do Identity, sem apagar dados da biblioteca.
+            return await _userManager.DeleteAsync(funcionario);
+        }
+
         private async Task<IdentityResult> CreateAccountAsync(User user, Leitor? leitor, string role)
         {
             // User, role e Leitor pertencem à mesma operação na mesma base de dados.

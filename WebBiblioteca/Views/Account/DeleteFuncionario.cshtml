@@ -1,0 +1,38 @@
+@model WebBiblioteca.Models.User
+
+@{
+    ViewData["Title"] = "Eliminar funcionário";
+}
+
+<h2>Eliminar funcionário</h2>
+<h3>Tem a certeza de que deseja eliminar este funcionário?</h3>
+<p>A conta será eliminada. Para voltar a iniciar sessão, será necessário criar uma nova conta.</p>
+
+<div>
+    <hr />
+
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <dl class="row">
+                <dt class="col-sm-3">Nome</dt>
+                <dd class="col-sm-9">@Model.FullName</dd>
+
+                <dt class="col-sm-3">Email</dt>
+                <dd class="col-sm-9">@Model.Email</dd>
+
+                <dt class="col-sm-3">Contacto</dt>
+                <dd class="col-sm-9">@Model.PhoneNumber</dd>
+
+                <dt class="col-sm-3">Estado</dt>
+                <dd class="col-sm-9">@(Model.DeveAlterarPassword ? "Aguarda palavra-passe" : "Conta ativa")</dd>
+            </dl>
+        </div>
+    </div>
+
+    <form asp-action="DeleteFuncionario" asp-route-id="@Model.Id" method="post">
+        <input type="submit" value="Eliminar" class="btn btn-danger" />
+        <a asp-action="Funcionarios" class="btn btn-secondary">Voltar</a>
+    </form>
+</div>
