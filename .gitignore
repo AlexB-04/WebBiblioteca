@@ -428,3 +428,6 @@ FodyWeavers.xsd
 *.msm
 *.msp
 **/App_Data/Mail/
+
+# Uploaded profile photos
+**/wwwroot/images/users/

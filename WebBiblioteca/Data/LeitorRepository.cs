@@ -71,6 +71,15 @@ namespace WebBiblioteca.Data
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpdateProfileAsync(Leitor leitor)
+        {
+            // O perfil só altera o nome e o contacto da ficha.
+            _context.Leitores.Attach(leitor);
+            _context.Entry(leitor).Property(l => l.Nome).IsModified = true;
+            _context.Entry(leitor).Property(l => l.Contacto).IsModified = true;
+            await _context.SaveChangesAsync();
+        }
+
         public async Task DeleteAsync(Leitor leitor)
         {
             _context.Leitores.Remove(leitor);

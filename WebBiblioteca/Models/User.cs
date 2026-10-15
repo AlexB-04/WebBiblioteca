@@ -17,6 +17,10 @@ namespace WebBiblioteca.Models
 
         public bool DeveAlterarPassword { get; set; }
 
+        [Display(Name = "Foto")]
+        [MaxLength(256)]
+        public string? ImageUrl { get; set; }
+
         [Display(Name = "Nome completo")]
         public string FullName => $"{FirstName} {LastName}";
     }

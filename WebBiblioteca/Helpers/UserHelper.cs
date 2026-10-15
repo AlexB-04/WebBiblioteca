@@ -168,6 +168,56 @@ namespace WebBiblioteca.Helpers
             return await _userManager.DeleteAsync(funcionario);
         }
 
+        public async Task<IdentityResult> UpdateProfileAsync(User user, ProfileViewModel model, string? imageUrl)
+        {
+            var leitor = await _leitorRepository.GetByUserIdAsync(user.Id);
+            if (leitor == null && await _userManager.IsInRoleAsync(user, "Leitor"))
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Description = "A ficha de leitor não foi encontrada. Contacte a biblioteca."
+                });
+            }
+
+            string nome = model.Nome.Trim();
+            string apelido = model.Apelido.Trim();
+            string contacto = model.PhoneNumber.Trim();
+            if (leitor != null && $"{nome} {apelido}".Length > 100)
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Description = "O nome completo do leitor pode conter no máximo 100 caracteres."
+                });
+            }
+
+            // O perfil e a ficha de leitor são guardados juntos.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            user.FirstName = nome;
+            user.LastName = apelido;
+            if (user.PhoneNumber != contacto)
+            {
+                user.PhoneNumberConfirmed = false;
+            }
+            user.PhoneNumber = contacto;
+            user.ImageUrl = imageUrl;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                return result;
+            }
+
+            if (leitor != null)
+            {
+                leitor.Nome = user.FullName;
+                leitor.Contacto = contacto;
+                await _leitorRepository.UpdateProfileAsync(leitor);
+            }
+
+            await transaction.CommitAsync();
+            return IdentityResult.Success;
+        }
+
         private async Task<IdentityResult> CreateAccountAsync(User user, Leitor? leitor, string role)
         {
             // User, role e Leitor pertencem à mesma operação na mesma base de dados.

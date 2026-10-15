@@ -18,6 +18,8 @@ namespace WebBiblioteca.Data
 
         Task UpdateAsync(Leitor leitor);
 
+        Task UpdateProfileAsync(Leitor leitor);
+
         Task DeleteAsync(Leitor leitor);
     }
 }

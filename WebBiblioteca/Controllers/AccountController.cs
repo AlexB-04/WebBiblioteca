@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
+using System.Security.Claims;
 using WebBiblioteca.Data;
 using WebBiblioteca.Helpers;
 using WebBiblioteca.Models;
@@ -16,15 +17,143 @@ namespace WebBiblioteca.Controllers
         private readonly IMailHelper _mailHelper;
         private readonly IConfiguration _configuration;
         private readonly IWebHostEnvironment _environment;
+        private readonly IImageHelper _imageHelper;
 
         public AccountController(IUserHelper userHelper, ILeitorRepository leitorRepository,
-            IMailHelper mailHelper, IConfiguration configuration, IWebHostEnvironment environment)
+            IMailHelper mailHelper, IConfiguration configuration, IWebHostEnvironment environment,
+            IImageHelper imageHelper)
         {
             _userHelper = userHelper;
             _leitorRepository = leitorRepository;
             _mailHelper = mailHelper;
             _configuration = configuration;
             _environment = environment;
+            _imageHelper = imageHelper;
+        }
+
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> Profile()
+        {
+            // O utilizador vem da sessão, nunca de um id recebido no formulário.
+            var user = await _userHelper.GetUserByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (!user.Aprovado || user.DeveAlterarPassword)
+            {
+                return Forbid();
+            }
+
+            return View(new ProfileViewModel
+            {
+                Nome = user.FirstName ?? string.Empty,
+                Apelido = user.LastName ?? string.Empty,
+                PhoneNumber = user.PhoneNumber ?? string.Empty,
+                Email = user.Email,
+                ImageUrl = user.ImageUrl
+            });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Profile(ProfileViewModel model)
+        {
+            var user = await _userHelper.GetUserByIdAsync(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty);
+            if (user == null)
+            {
+                return NotFound();
+            }
+            if (!user.Aprovado || user.DeveAlterarPassword)
+            {
+                return Forbid();
+            }
+
+            model.Email = user.Email;
+            model.ImageUrl = user.ImageUrl;
+            string? newImageUrl = null;
+
+            try
+            {
+                if (model.ImageFile != null)
+                {
+                    if (model.RemovePhoto)
+                    {
+                        ModelState.AddModelError("ImageFile", "Escolha uma nova foto ou remova a atual, uma operação de cada vez.");
+                    }
+                    if (model.ImageFile.Length == 0)
+                    {
+                        ModelState.AddModelError("ImageFile", "O ficheiro selecionado está vazio.");
+                    }
+                    else if (model.ImageFile.Length > 5 * 1024 * 1024)
+                    {
+                        ModelState.AddModelError("ImageFile", "A foto não pode ultrapassar 5 MB.");
+                    }
+                    else
+                    {
+                        string extension = Path.GetExtension(model.ImageFile.FileName).ToLowerInvariant();
+                        using var reader = new BinaryReader(model.ImageFile.OpenReadStream());
+                        byte[] signature = reader.ReadBytes(8);
+                        bool isJpeg = (extension == ".jpg" || extension == ".jpeg") &&
+                            model.ImageFile.ContentType == "image/jpeg" &&
+                            signature.Length >= 3 && signature[0] == 0xFF && signature[1] == 0xD8 && signature[2] == 0xFF;
+                        bool isPng = extension == ".png" && model.ImageFile.ContentType == "image/png" &&
+                            signature.SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
+
+                        if (!isJpeg && !isPng)
+                        {
+                            ModelState.AddModelError("ImageFile", "Selecione uma imagem JPEG (.jpg ou .jpeg) ou PNG (.png).");
+                        }
+                    }
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return View(model);
+                }
+
+                if (model.ImageFile != null)
+                {
+                    newImageUrl = await _imageHelper.UploadImageAsync(model.ImageFile, "users");
+                }
+
+                string? imageUrl = model.RemovePhoto ? null : newImageUrl ?? model.ImageUrl;
+                var result = await _userHelper.UpdateProfileAsync(user, model, imageUrl);
+                if (result.Succeeded)
+                {
+                    if (imageUrl != model.ImageUrl)
+                    {
+                        _imageHelper.TryDeleteImage(model.ImageUrl, "users");
+                    }
+                    TempData["AccountMessage"] = "Perfil atualizado com sucesso.";
+                    return RedirectToAction("Profile");
+                }
+
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError(string.Empty, error.Code == "ConcurrencyFailure"
+                        ? "Os dados foram alterados por outro pedido. Atualize a página e tente novamente."
+                        : error.Description);
+                }
+            }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Não foi possível guardar o perfil. Verifique os dados e tente novamente.");
+            }
+            catch (IOException)
+            {
+                ModelState.AddModelError("ImageFile", "Não foi possível guardar a foto. Selecione o ficheiro e tente novamente.");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                ModelState.AddModelError("ImageFile", "Não foi possível guardar a foto. Contacte o administrador.");
+            }
+
+            // Se a gravação falhar, a foto anterior continua associada à conta.
+            _imageHelper.TryDeleteImage(newImageUrl, "users");
+            return View(model);
         }
 
         [HttpGet]
@@ -407,6 +536,7 @@ namespace WebBiblioteca.Controllers
                 return View("DeleteFuncionario", funcionario);
             }
 
+            _imageHelper.TryDeleteImage(funcionario.ImageUrl, "users");
             TempData["AccountMessage"] = "Funcionário eliminado com sucesso.";
             return RedirectToAction("Funcionarios");
         }

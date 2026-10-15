@@ -25,6 +25,8 @@ namespace WebBiblioteca.Helpers
 
         Task<IdentityResult> DeleteFuncionarioAsync(User funcionario);
 
+        Task<IdentityResult> UpdateProfileAsync(User user, ProfileViewModel model, string? imageUrl);
+
         Task<IdentityResult> ApproveLeitorAsync(int idLeitor);
 
         Task<string> GeneratePasswordResetTokenAsync(User user);
