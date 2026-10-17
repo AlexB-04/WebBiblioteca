@@ -19,6 +19,10 @@ namespace WebBiblioteca.Helpers
 
         Task<IdentityResult> RegisterLeitorAsync(User user, Leitor leitor);
 
+        Task<IdentityResult> UpdateLeitorAsync(Leitor leitor, LeitorViewModel model);
+
+        Task<IdentityResult> DeleteLeitorAsync(Leitor leitor);
+
         Task<IdentityResult> CreateFuncionarioAsync(User user);
 
         Task<IdentityResult> UpdateFuncionarioAsync(User funcionario, EditFuncionarioViewModel model);

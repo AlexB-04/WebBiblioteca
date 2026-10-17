@@ -1,0 +1,24 @@
+@model WebBiblioteca.Models.Leitor
+@{ ViewData["Title"] = "Detalhes do leitor"; }
+
+<h2>Detalhes do leitor</h2>
+@if (TempData["LeitorMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["LeitorMessage"]</div>
+}
+<partial name="_Detalhes" model="Model" />
+<dl class="row">
+    <dt class="col-sm-3">Livros por devolver</dt><dd class="col-sm-9">@ViewBag.LivrosEmprestados</dd>
+    <dt class="col-sm-3">Atrasos registados</dt><dd class="col-sm-9">@Model.Atrasos</dd>
+    <dt class="col-sm-3">Bloqueado até</dt><dd class="col-sm-9">@(Model.BloqueadoAte?.ToString("dd/MM/yyyy HH:mm") ?? "Sem bloqueio")</dd>
+    <dt class="col-sm-3">Conta</dt>
+    <dd class="col-sm-9">
+        @if (Model.UserId == null) { <span>Ficha sem conta de acesso</span> }
+        else if (Model.User?.Aprovado != true) { <span>Aguarda confirmação do administrador</span> }
+        else if (Model.User.DeveAlterarPassword) { <span>Aguarda definição da palavra-passe</span> }
+        else { <span>Conta ativa</span> }
+    </dd>
+</dl>
+<a asp-action="Edit" asp-route-id="@Model.IdLeitor" class="btn btn-warning">Editar</a>
+<a asp-action="Delete" asp-route-id="@Model.IdLeitor" class="btn btn-danger">Eliminar</a>
+<a asp-action="Index" class="btn btn-secondary">Voltar</a>

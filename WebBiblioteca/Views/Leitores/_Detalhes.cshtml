@@ -1,0 +1,11 @@
+@model WebBiblioteca.Models.Leitor
+
+<dl class="row">
+    <dt class="col-sm-3">ID</dt><dd class="col-sm-9">@Model.IdLeitor</dd>
+    <dt class="col-sm-3">Código de leitor</dt><dd class="col-sm-9">@(Model.CodigoLeitor ?? "Ainda não atribuído")</dd>
+    <dt class="col-sm-3">Nome</dt><dd class="col-sm-9">@Model.Nome</dd>
+    <dt class="col-sm-3">Contacto</dt><dd class="col-sm-9">@Model.Contacto</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@Model.Email</dd>
+    <dt class="col-sm-3">Tipo de utilizador</dt><dd class="col-sm-9">@Model.TipoUtilizador</dd>
+    <dt class="col-sm-3">Limite de empréstimos</dt><dd class="col-sm-9">@Model.LimiteEmprestimos</dd>
+</dl>

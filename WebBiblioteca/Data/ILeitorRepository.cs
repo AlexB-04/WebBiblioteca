@@ -20,6 +20,12 @@ namespace WebBiblioteca.Data
 
         Task UpdateProfileAsync(Leitor leitor);
 
+        Task UpdateDadosAsync(Leitor leitor);
+
+        Task<int> ContarLivrosEmprestadosAsync(int id);
+
+        Task<bool> TemHistoricoAsync(int id);
+
         Task DeleteAsync(Leitor leitor);
     }
 }

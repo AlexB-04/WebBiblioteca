@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using WebBiblioteca.Models;
 using WebBiblioteca.Data;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace WebBiblioteca.Helpers
 {
@@ -82,6 +83,156 @@ namespace WebBiblioteca.Helpers
             user.DeveAlterarPassword = true;
             user.EmailConfirmed = false;
             return await CreateAccountAsync(user, null, "Funcionario");
+        }
+
+        public async Task<IdentityResult> UpdateLeitorAsync(Leitor leitor, LeitorViewModel model)
+        {
+            model.TemConta = leitor.UserId != null;
+            var result = await ValidateLeitorAsync(model, leitor.IdLeitor, leitor.UserId);
+            if (!result.Succeeded)
+            {
+                return result;
+            }
+
+            int livrosEmprestados = await _leitorRepository.ContarLivrosEmprestadosAsync(leitor.IdLeitor);
+            if (model.LimiteEmprestimos < livrosEmprestados)
+            {
+                return IdentityResult.Failed(new IdentityError
+                {
+                    Code = "LimiteEmprestimos",
+                    Description = $"O leitor tem {livrosEmprestados} livro(s) por devolver. O limite não pode ser inferior a esse número."
+                });
+            }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            string email = model.Email.Trim();
+            string contacto = model.Contacto.Trim();
+            string nome = model.Nome.Trim();
+
+            if (leitor.UserId != null)
+            {
+                var user = await _userManager.FindByIdAsync(leitor.UserId);
+                if (user == null || !await _userManager.IsInRoleAsync(user, "Leitor") ||
+                    await _userManager.IsInRoleAsync(user, "Admin") ||
+                    await _userManager.IsInRoleAsync(user, "Funcionario"))
+                {
+                    return IdentityResult.Failed(new IdentityError { Description = "A conta associada não é uma conta de leitor válida." });
+                }
+
+                bool emailAlterado = !string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase);
+                user.FirstName = nome;
+                user.LastName = model.Apelido!.Trim();
+                if (user.PhoneNumber != contacto)
+                {
+                    user.PhoneNumberConfirmed = false;
+                }
+                user.PhoneNumber = contacto;
+                user.Email = email;
+                user.UserName = email;
+                if (emailAlterado)
+                {
+                    user.Aprovado = false;
+                    user.DeveAlterarPassword = true;
+                    user.EmailConfirmed = false;
+                }
+
+                result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    return result;
+                }
+                if (emailAlterado)
+                {
+                    result = await _userManager.UpdateSecurityStampAsync(user);
+                    if (!result.Succeeded)
+                    {
+                        return result;
+                    }
+                }
+                nome = user.FullName;
+            }
+
+            leitor.Nome = nome;
+            leitor.Contacto = contacto;
+            leitor.Email = email;
+            leitor.TipoUtilizador = model.TipoUtilizador;
+            leitor.LimiteEmprestimos = model.LimiteEmprestimos;
+            await _leitorRepository.UpdateDadosAsync(leitor);
+            await transaction.CommitAsync();
+            return IdentityResult.Success;
+        }
+
+        public async Task<IdentityResult> DeleteLeitorAsync(Leitor leitor)
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            if (await _leitorRepository.ContarLivrosEmprestadosAsync(leitor.IdLeitor) > 0)
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "Não é possível eliminar um leitor com empréstimos ativos. Registe primeiro as devoluções." });
+            }
+            if (await _leitorRepository.TemHistoricoAsync(leitor.IdLeitor))
+            {
+                return IdentityResult.Failed(new IdentityError { Description = "Não é possível eliminar este leitor porque tem histórico de empréstimos ou reservas. O histórico deve ser conservado." });
+            }
+
+            User? user = null;
+            if (leitor.UserId != null)
+            {
+                user = await _userManager.FindByIdAsync(leitor.UserId);
+                if (user == null || !await _userManager.IsInRoleAsync(user, "Leitor") ||
+                    await _userManager.IsInRoleAsync(user, "Admin") ||
+                    await _userManager.IsInRoleAsync(user, "Funcionario"))
+                {
+                    return IdentityResult.Failed(new IdentityError { Description = "A conta associada não é uma conta de leitor válida." });
+                }
+            }
+
+            // Retirar primeiro a ficha; a relação com Identity não permite apagar em cascata.
+            await _leitorRepository.DeleteAsync(leitor);
+            if (user != null)
+            {
+                var result = await _userManager.DeleteAsync(user);
+                if (!result.Succeeded)
+                {
+                    return result;
+                }
+            }
+            await transaction.CommitAsync();
+            return IdentityResult.Success;
+        }
+
+        private async Task<IdentityResult> ValidateLeitorAsync(LeitorViewModel model, int id, string? userId)
+        {
+            var errors = new List<ValidationResult>();
+            Validator.TryValidateObject(model, new ValidationContext(model), errors, true);
+            if (model.TemConta)
+            {
+                if (string.IsNullOrWhiteSpace(model.Apelido))
+                {
+                    errors.Add(new ValidationResult("O apelido é obrigatório para uma conta de leitor."));
+                }
+                if (model.Nome?.Trim().Length > 50 ||
+                    $"{model.Nome?.Trim()} {model.Apelido?.Trim()}".Length > 100)
+                {
+                    errors.Add(new ValidationResult("O nome pode ter até 50 caracteres e o nome completo até 100 caracteres."));
+                }
+            }
+            if (errors.Count > 0)
+            {
+                return IdentityResult.Failed(errors.Select(error => new IdentityError
+                {
+                    Description = error.ErrorMessage ?? "Verifique os dados do leitor."
+                }).ToArray());
+            }
+
+            string email = model.Email.Trim();
+            bool emailDeLeitor = await _leitorRepository.GetAll().AnyAsync(leitor =>
+                leitor.IdLeitor != id && leitor.Email != null && leitor.Email.ToUpper() == email.ToUpper());
+            var otherUser = await _userManager.FindByEmailAsync(email);
+            if (emailDeLeitor || (otherUser != null && otherUser.Id != userId))
+            {
+                return IdentityResult.Failed(new IdentityError { Code = "DuplicateEmail", Description = "Este email já está registado." });
+            }
+            return IdentityResult.Success;
         }
 
         public async Task<IdentityResult> UpdateFuncionarioAsync(User funcionario, EditFuncionarioViewModel model)
@@ -274,7 +425,7 @@ namespace WebBiblioteca.Helpers
                 return result;
             }
 
-            leitor.CodigoLeitor = "L" + leitor.IdLeitor.ToString("D6");
+            leitor.CodigoLeitor ??= "L" + leitor.IdLeitor.ToString("D6");
             await _leitorRepository.UpdateAsync(leitor);
             await transaction.CommitAsync();
             return IdentityResult.Success;

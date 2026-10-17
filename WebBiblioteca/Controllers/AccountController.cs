@@ -160,6 +160,12 @@ namespace WebBiblioteca.Controllers
         [AllowAnonymous]
         public IActionResult Register()
         {
+            // O registo é para o próprio leitor, antes de iniciar sessão.
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return Forbid();
+            }
+
             return View(new RegisterNewUserViewModel());
         }
 
@@ -168,6 +174,12 @@ namespace WebBiblioteca.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Register(RegisterNewUserViewModel model)
         {
+            // O registo é para o próprio leitor, antes de iniciar sessão.
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                return Forbid();
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(model);

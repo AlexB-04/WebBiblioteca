@@ -1,0 +1,23 @@
+@model WebBiblioteca.Models.LeitorViewModel
+@{ ViewData["Title"] = "Editar leitor"; }
+
+<h2>Editar leitor</h2>
+<p>Código / ID: <strong>@(Model.CodigoLeitor ?? $"ID {Model.IdLeitor}")</strong></p>
+@if (Model.TemConta)
+{
+    <p>O nome e o contacto também serão atualizados no perfil do leitor. Se alterar o email, a conta aguarda nova confirmação do administrador e definição da palavra-passe.</p>
+}
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit" asp-route-id="@Model.IdLeitor" method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="IdLeitor" />
+            <partial name="_Leitor" model="Model" />
+            <button type="submit" class="btn btn-primary">Guardar</button>
+            <a asp-action="Details" asp-route-id="@Model.IdLeitor" class="btn btn-secondary">Voltar</a>
+        </form>
+    </div>
+</div>
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

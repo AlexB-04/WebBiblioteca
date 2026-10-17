@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
+using WebBiblioteca.Helpers;
 using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Controllers.API
@@ -12,54 +13,51 @@ namespace WebBiblioteca.Controllers.API
     public class LeitoresController : Controller
     {
         private readonly ILeitorRepository _leitorRepository;
+        private readonly IUserHelper _userHelper;
+        private readonly IImageHelper _imageHelper;
 
-        public LeitoresController(ILeitorRepository leitorRepository)
+        public LeitoresController(ILeitorRepository leitorRepository, IUserHelper userHelper, IImageHelper imageHelper)
         {
             _leitorRepository = leitorRepository;
+            _userHelper = userHelper;
+            _imageHelper = imageHelper;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetLeitores(int? id, string? nome)
+        public async Task<IActionResult> GetLeitores(int? id, string? nome, string? codigo)
         {
             if (id == null)
             {
-                var leitoresFiltrados = _leitorRepository.GetAll();
-
+                var leitores = _leitorRepository.GetAll();
                 if (!string.IsNullOrWhiteSpace(nome))
                 {
-                    nome = nome.Trim();
-
-                    leitoresFiltrados = leitoresFiltrados
-                        .Where(leitorDaLista =>
-                            leitorDaLista.Nome != null &&
-                            leitorDaLista.Nome.Contains(nome));
+                    string texto = nome.Trim().ToUpper();
+                    leitores = leitores.Where(leitor => leitor.Nome != null && leitor.Nome.ToUpper().Contains(texto));
                 }
-
-                var leitores = await leitoresFiltrados
-                    .OrderBy(leitorDaLista => leitorDaLista.Nome)
-                    .Select(leitorDaLista => new
-                    {
-                        leitorDaLista.IdLeitor,
-                        leitorDaLista.Nome,
-                        leitorDaLista.Contacto,
-                        leitorDaLista.Email,
-                        leitorDaLista.TipoUtilizador,
-                        leitorDaLista.LimiteEmprestimos,
-                        leitorDaLista.Atrasos,
-                        leitorDaLista.BloqueadoAte
-                    })
-                    .ToListAsync();
-
-                return Ok(leitores);
+                if (!string.IsNullOrWhiteSpace(codigo))
+                {
+                    string texto = codigo.Trim().ToUpper();
+                    leitores = leitores.Where(leitor => leitor.CodigoLeitor != null && leitor.CodigoLeitor.ToUpper().Contains(texto));
+                }
+                return Ok(await leitores.OrderBy(leitor => leitor.Nome).Select(leitor => new
+                {
+                    leitor.IdLeitor,
+                    leitor.Nome,
+                    leitor.Contacto,
+                    leitor.Email,
+                    leitor.TipoUtilizador,
+                    leitor.LimiteEmprestimos,
+                    leitor.CodigoLeitor,
+                    leitor.Atrasos,
+                    leitor.BloqueadoAte
+                }).ToListAsync());
             }
 
             var leitor = await _leitorRepository.GetByIdAsync(id.Value);
-
             if (leitor == null)
             {
                 return NotFound();
             }
-
             return Ok(new
             {
                 leitor.IdLeitor,
@@ -68,82 +66,7 @@ namespace WebBiblioteca.Controllers.API
                 leitor.Email,
                 leitor.TipoUtilizador,
                 leitor.LimiteEmprestimos,
-                leitor.Atrasos,
-                leitor.BloqueadoAte
-            });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Post([FromBody] Leitor leitor)
-        {
-            if (leitor == null)
-            {
-                return BadRequest("Dados do leitor inválidos.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.Nome))
-            {
-                return BadRequest("O nome do leitor é obrigatório.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.Contacto))
-            {
-                return BadRequest("O contacto do leitor é obrigatório.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.Email))
-            {
-                return BadRequest("O email do leitor é obrigatório.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.TipoUtilizador))
-            {
-                return BadRequest("O tipo de utilizador é obrigatório.");
-            }
-
-            if (leitor.LimiteEmprestimos < 0)
-            {
-                return BadRequest("O limite de empréstimos não pode ser negativo.");
-            }
-
-            leitor.Nome = leitor.Nome.Trim();
-            leitor.Contacto = leitor.Contacto.Trim();
-            leitor.Email = leitor.Email.Trim();
-            leitor.TipoUtilizador = leitor.TipoUtilizador.Trim();
-
-            if (leitor.TipoUtilizador != "Aluno" &&
-                leitor.TipoUtilizador != "Professor" &&
-                leitor.TipoUtilizador != "Público em Geral")
-            {
-                return BadRequest("O tipo deve ser Aluno, Professor ou Público em Geral.");
-            }
-
-            bool emailJaExiste = _leitorRepository.GetAll()
-                .Any(outroLeitor => outroLeitor.Email == leitor.Email);
-
-            if (emailJaExiste)
-            {
-                return BadRequest("Já existe um leitor com esse email.");
-            }
-
-            try
-            {
-                await _leitorRepository.CreateAsync(leitor);
-            }
-            catch (DbUpdateException)
-            {
-                return BadRequest("Não foi possível guardar o leitor. Verifique os dados e o email.");
-            }
-
-            return Ok(new
-            {
-                leitor.IdLeitor,
-                leitor.Nome,
-                leitor.Contacto,
-                leitor.Email,
-                leitor.TipoUtilizador,
-                leitor.LimiteEmprestimos,
+                leitor.CodigoLeitor,
                 leitor.Atrasos,
                 leitor.BloqueadoAte
             });
@@ -151,97 +74,39 @@ namespace WebBiblioteca.Controllers.API
 
         [HttpPut]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Put(int id, [FromBody] Leitor leitor)
+        public async Task<IActionResult> Put(int id, [FromBody] LeitorViewModel model)
         {
+            var leitor = await _leitorRepository.GetByIdAsync(id);
             if (leitor == null)
-            {
-                return BadRequest("Dados do leitor inválidos.");
-            }
-
-            var leitorExistente = await _leitorRepository.GetByIdAsync(id);
-
-            if (leitorExistente == null)
             {
                 return NotFound();
             }
 
-            if (string.IsNullOrWhiteSpace(leitor.Nome))
+            // Aceitar pedidos antigos que mantêm o nome completo da conta.
+            // Para alterar o nome de uma conta, enviar Nome e Apelido separados, como no formulário.
+            if (leitor.UserId != null && model.Apelido == null && model.Nome.Trim() == leitor.Nome)
             {
-                return BadRequest("O nome do leitor é obrigatório.");
+                var user = await _userHelper.GetUserByIdAsync(leitor.UserId);
+                if (user != null)
+                {
+                    model.Nome = user.FirstName ?? string.Empty;
+                    model.Apelido = user.LastName;
+                }
             }
-
-            if (string.IsNullOrWhiteSpace(leitor.Contacto))
-            {
-                return BadRequest("O contacto do leitor é obrigatório.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.Email))
-            {
-                return BadRequest("O email do leitor é obrigatório.");
-            }
-
-            if (string.IsNullOrWhiteSpace(leitor.TipoUtilizador))
-            {
-                return BadRequest("O tipo de utilizador é obrigatório.");
-            }
-
-            if (leitor.LimiteEmprestimos < 0)
-            {
-                return BadRequest("O limite de empréstimos não pode ser negativo.");
-            }
-
-            leitor.Nome = leitor.Nome.Trim();
-            leitor.Contacto = leitor.Contacto.Trim();
-            leitor.Email = leitor.Email.Trim();
-            leitor.TipoUtilizador = leitor.TipoUtilizador.Trim();
-
-            if (leitor.TipoUtilizador != "Aluno" &&
-                leitor.TipoUtilizador != "Professor" &&
-                leitor.TipoUtilizador != "Público em Geral")
-            {
-                return BadRequest("O tipo deve ser Aluno, Professor ou Público em Geral.");
-            }
-
-            bool emailJaExiste = _leitorRepository.GetAll()
-                .Any(outroLeitor => outroLeitor.Email == leitor.Email && outroLeitor.IdLeitor != id);
-
-            if (emailJaExiste)
-            {
-                return BadRequest("Já existe outro leitor com esse email.");
-            }
-
-            if (leitorExistente.UserId != null &&
-                !string.Equals(leitorExistente.Email, leitor.Email, StringComparison.OrdinalIgnoreCase))
-            {
-                return BadRequest("O email de uma conta associada deve ser alterado através da gestão da conta.");
-            }
-
-            leitorExistente.Nome = leitor.Nome;
-            leitorExistente.Contacto = leitor.Contacto;
-            leitorExistente.Email = leitor.Email;
-            leitorExistente.TipoUtilizador = leitor.TipoUtilizador;
-            leitorExistente.LimiteEmprestimos = leitor.LimiteEmprestimos;
 
             try
             {
-                await _leitorRepository.UpdateAsync(leitorExistente);
+                var result = await _userHelper.UpdateLeitorAsync(leitor, model);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(string.Join(" ", result.Errors.Select(error => error.Description)));
+                }
             }
             catch (DbUpdateException)
             {
-                return BadRequest("Não foi possível alterar o leitor. Verifique os dados e o email.");
+                return BadRequest("Não foi possível alterar o leitor. Verifique os dados e tente novamente.");
             }
-
-            return Ok(new
-            {
-                leitorExistente.IdLeitor,
-                leitorExistente.Nome,
-                leitorExistente.Contacto,
-                leitorExistente.Email,
-                leitorExistente.TipoUtilizador,
-                leitorExistente.LimiteEmprestimos,
-                leitorExistente.Atrasos,
-                leitorExistente.BloqueadoAte
-            });
+            return await GetLeitores(id, null, null);
         }
 
         [HttpDelete]
@@ -249,26 +114,24 @@ namespace WebBiblioteca.Controllers.API
         public async Task<IActionResult> DeleteLeitor(int id)
         {
             var leitor = await _leitorRepository.GetByIdAsync(id);
-
             if (leitor == null)
             {
                 return NotFound();
             }
-
+            var user = leitor.UserId == null ? null : await _userHelper.GetUserByIdAsync(leitor.UserId);
             try
             {
-                if (leitor.UserId != null)
+                var result = await _userHelper.DeleteLeitorAsync(leitor);
+                if (!result.Succeeded)
                 {
-                    return BadRequest("Este leitor tem uma conta associada. A eliminação conjunta deve ser efetuada através da gestão de contas.");
+                    return BadRequest(string.Join(" ", result.Errors.Select(error => error.Description)));
                 }
-
-                await _leitorRepository.DeleteAsync(leitor);
+                _imageHelper.TryDeleteImage(user?.ImageUrl, "users");
             }
             catch (DbUpdateException)
             {
                 return BadRequest("Não foi possível eliminar o leitor. Verifique os registos associados.");
             }
-
             return Ok();
         }
     }

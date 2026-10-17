@@ -14,7 +14,7 @@ namespace WebBiblioteca.Data
 
         public IQueryable<Leitor> GetAll()
         {
-            return _context.Leitores.AsNoTracking();
+            return _context.Leitores.Include(leitor => leitor.User).AsNoTracking();
         }
 
         public async Task<Leitor?> GetByIdAsync(int id)
@@ -84,6 +84,31 @@ namespace WebBiblioteca.Data
         {
             _context.Leitores.Remove(leitor);
             await _context.SaveChangesAsync();
+        }
+
+        public async Task UpdateDadosAsync(Leitor leitor)
+        {
+            // A gestão da ficha não altera o código, a conta, os atrasos ou o bloqueio.
+            _context.Leitores.Attach(leitor);
+            _context.Entry(leitor).Property(l => l.Nome).IsModified = true;
+            _context.Entry(leitor).Property(l => l.Contacto).IsModified = true;
+            _context.Entry(leitor).Property(l => l.Email).IsModified = true;
+            _context.Entry(leitor).Property(l => l.TipoUtilizador).IsModified = true;
+            _context.Entry(leitor).Property(l => l.LimiteEmprestimos).IsModified = true;
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<int> ContarLivrosEmprestadosAsync(int id)
+        {
+            return await _context.EmprestimoDetalhes.CountAsync(detalhe =>
+                detalhe.Emprestimo != null && detalhe.Emprestimo.IdLeitor == id &&
+                detalhe.DataDevolucao == null);
+        }
+
+        public async Task<bool> TemHistoricoAsync(int id)
+        {
+            return await _context.Emprestimos.AnyAsync(emprestimo => emprestimo.IdLeitor == id) ||
+                await _context.Reservas.AnyAsync(reserva => reserva.IdLeitor == id);
         }
     }
 }
