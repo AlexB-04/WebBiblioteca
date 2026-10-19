@@ -1,0 +1,25 @@
+@model WebBiblioteca.Models.Reserva
+@{
+    ViewData["Title"] = "Cancelar reserva";
+}
+
+<h2>Cancelar reserva #@Model.IdReserva</h2>
+<p>Livro: <strong>@(Model.Livro?.Titulo)</strong></p>
+<p>Leitor: <strong>@(Model.Leitor?.Nome)</strong></p>
+
+@if (!Model.Ativa)
+{
+    <div class="alert alert-warning">Esta reserva já está inativa. Não pode ser cancelada novamente.</div>
+}
+else
+{
+    <p>Confirma o cancelamento? O histórico será mantido e a fila de espera será atualizada.</p>
+    <form asp-action="Cancelar" asp-route-id="@Model.IdReserva" method="post">
+        <button type="submit" class="btn btn-danger">Confirmar cancelamento</button>
+        <a asp-action="Details" asp-route-id="@Model.IdReserva" class="btn btn-secondary">Voltar</a>
+    </form>
+}
+@if (!Model.Ativa)
+{
+    <a asp-action="Details" asp-route-id="@Model.IdReserva" class="btn btn-secondary">Voltar</a>
+}

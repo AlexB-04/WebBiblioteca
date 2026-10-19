@@ -1,0 +1,101 @@
+@model WebBiblioteca.Models.Reserva
+@{
+    ViewData["Title"] = "Detalhes da reserva";
+    bool funcionario = User.IsInRole("Funcionario");
+}
+
+<h2>Reserva #@Model.IdReserva</h2>
+
+@if (TempData["ReservaMessage"] != null)
+{
+    <div class="alert alert-success" role="status">@TempData["ReservaMessage"]</div>
+}
+
+<dl class="row">
+    @if (funcionario)
+    {
+        <dt class="col-sm-3">Leitor</dt>
+        <dd class="col-sm-9">@(Model.Leitor?.Nome) (ID @Model.IdLeitor)</dd>
+    }
+    <dt class="col-sm-3">Livro</dt>
+    <dd class="col-sm-9">@(Model.Livro?.Titulo) (ID @Model.IdLivro)</dd>
+    <dt class="col-sm-3">Data da reserva</dt>
+    <dd class="col-sm-9">@Model.DataReserva.ToString("dd/MM/yyyy HH:mm")</dd>
+    <dt class="col-sm-3">Estado</dt>
+    <dd class="col-sm-9">
+        @if (!Model.Ativa)
+        {
+            <span>Inativa (consulte as alterações abaixo)</span>
+        }
+        else if (Model.DataDisponivel.HasValue)
+        {
+            <span>Disponível para levantamento</span>
+        }
+        else
+        {
+            <span>A aguardar na fila</span>
+        }
+    </dd>
+    <dt class="col-sm-3">Posição na fila</dt>
+    <dd class="col-sm-9">@(Model.Ativa ? Model.Ordem.ToString() : "Não aplicável")</dd>
+    <dt class="col-sm-3">Disponível desde</dt>
+    <dd class="col-sm-9">@(Model.DataDisponivel?.ToString("dd/MM/yyyy HH:mm") ?? "Ainda não disponível")</dd>
+</dl>
+
+@if (funcionario && Model.Ativa && Model.DataDisponivel.HasValue)
+{
+    <div class="alert alert-info">
+        Para registar o levantamento, abra a criação de empréstimo para este leitor e selecione o livro reservado.
+        As verificações de disponibilidade, fila e empréstimo são feitas pelo módulo de empréstimos.
+    </div>
+    <p><a asp-controller="Emprestimos" asp-action="Create" asp-route-idLeitor="@Model.IdLeitor" class="btn btn-success">Registar levantamento em Empréstimos</a></p>
+}
+else if (!funcionario && Model.Ativa && Model.DataDisponivel.HasValue)
+{
+    <p class="alert alert-info">O livro está disponível. Contacte o funcionário da biblioteca para efetuar o levantamento.</p>
+}
+
+<h3>Histórico de alterações</h3>
+@if (Model.Alteracoes == null || !Model.Alteracoes.Any())
+{
+    <p>Ainda não há alterações registadas.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr><th>Data</th><th>Ação</th><th>Livro anterior</th><th>Livro novo</th><th>Fila anterior</th><th>Fila nova</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var alteracao in Model.Alteracoes.OrderBy(a => a.DataAlteracao).ThenBy(a => a.IdReservaAlteracao))
+                {
+                    <tr>
+                        <td>@alteracao.DataAlteracao.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@alteracao.Acao</td>
+                        <td>@alteracao.LivroAnterior</td>
+                        <td>@alteracao.LivroNovo</td>
+                        <td>@alteracao.OrdemAnterior</td>
+                        <td>@alteracao.OrdemNova</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<p>
+    @if (Model.Ativa && !Model.DataDisponivel.HasValue)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.IdReserva" class="btn btn-primary">Alterar livro</a>
+    }
+    @if (Model.Ativa)
+    {
+        <a asp-action="Cancelar" asp-route-id="@Model.IdReserva" class="btn btn-danger">Cancelar reserva</a>
+    }
+    @if (funcionario)
+    {
+        <a asp-action="Index" asp-route-idLivro="@Model.IdLivro" asp-route-ativa="true" class="btn btn-outline-secondary">Ver fila deste livro</a>
+    }
+    <a asp-action="Index" class="btn btn-secondary">Voltar às reservas</a>
+</p>

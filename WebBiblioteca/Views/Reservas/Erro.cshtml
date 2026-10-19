@@ -1,0 +1,9 @@
+@model string
+@{
+    ViewData["Title"] = "Não foi possível concluir";
+}
+
+<h2>Não foi possível concluir</h2>
+<div class="alert alert-warning" role="alert">@Model</div>
+<a asp-action="Index" class="btn btn-primary">Consultar reservas</a>
+<a asp-controller="Livros" asp-action="Index" class="btn btn-secondary">Consultar livros</a>

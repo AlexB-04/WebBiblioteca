@@ -1,0 +1,28 @@
+@model WebBiblioteca.Models.ReservaFormViewModel
+@{
+    ViewData["Title"] = "Alterar reserva";
+}
+
+<h2>Alterar reserva #@Model.IdReserva</h2>
+<p>Pode trocar o livro enquanto a reserva está ativa e ainda aguarda na fila. Ao mudar de livro, entrará no fim da nova fila.</p>
+
+<form asp-action="Edit" asp-route-id="@Model.IdReserva" method="post">
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    <div class="mb-3">
+        <label asp-for="IdLivro" class="form-label">Novo livro</label>
+        <select asp-for="IdLivro" class="form-select">
+            <option value="0">Selecione um livro</option>
+            @foreach (var livro in Model.Livros)
+            {
+                <option value="@livro.IdLivro">@livro.Titulo (ID @livro.IdLivro; exemplares na biblioteca: @livro.ExemplaresDisponiveis)</option>
+            }
+        </select>
+        <span asp-validation-for="IdLivro" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar alteração</button>
+    <a asp-action="Details" asp-route-id="@Model.IdReserva" class="btn btn-secondary">Voltar</a>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

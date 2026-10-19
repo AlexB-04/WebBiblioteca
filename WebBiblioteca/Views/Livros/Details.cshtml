@@ -88,5 +88,13 @@
     {
         <a asp-action="Edit" asp-route-id="@Model.IdLivro" class="btn btn-warning">Editar</a>
     }
+    @if (User.Identity?.IsAuthenticated != true || User.IsInRole("Leitor") || User.IsInRole("Funcionario"))
+    {
+        <a asp-controller="Reservas" asp-action="Create" asp-route-idLivro="@Model.IdLivro" class="btn btn-primary">Reservar livro</a>
+    }
+    @if (User.IsInRole("Leitor") || User.IsInRole("Funcionario"))
+    {
+        <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-primary">@(User.IsInRole("Funcionario") ? "Gerir reservas" : "As minhas reservas")</a>
+    }
     <a asp-action="Index" class="btn btn-success">Voltar</a>
 </div>

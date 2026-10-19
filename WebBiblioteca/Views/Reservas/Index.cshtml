@@ -1,0 +1,107 @@
+@model IEnumerable<WebBiblioteca.Models.Reserva>
+@{
+    ViewData["Title"] = "Reservas";
+    bool funcionario = User.IsInRole("Funcionario");
+}
+
+<h2>@(funcionario ? "Gestão de reservas" : "As minhas reservas")</h2>
+
+@if (TempData["ReservaMessage"] != null)
+{
+    <div class="alert alert-success" role="status">@TempData["ReservaMessage"]</div>
+}
+
+<p>
+    <a asp-action="Create" class="btn btn-primary">Nova reserva</a>
+</p>
+
+<form asp-action="Index" method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <label class="form-label" for="idLivro">ID do livro</label>
+        <input class="form-control" type="number" min="1" id="idLivro" name="idLivro" value="@ViewBag.IdLivro" />
+    </div>
+    @if (funcionario)
+    {
+        <div class="col-md-3">
+            <label class="form-label" for="idLeitor">ID do leitor</label>
+            <input class="form-control" type="number" min="1" id="idLeitor" name="idLeitor" value="@ViewBag.IdLeitor" />
+        </div>
+    }
+    <div class="col-md-3">
+        <label class="form-label" for="ativa">Estado</label>
+        <select class="form-select" name="ativa" id="ativa">
+            <option value="" selected="@(ViewBag.Ativa == null)">Todas</option>
+            <option value="true" selected="@(ViewBag.Ativa == true)">Ativas</option>
+            <option value="false" selected="@(ViewBag.Ativa == false)">Inativas</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-secondary">Pesquisar</button>
+    </div>
+</form>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Não existem reservas para os filtros indicados.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    @if (funcionario)
+                    {
+                        <th>Leitor</th>
+                    }
+                    <th>Livro</th>
+                    <th>Data</th>
+                    <th>Fila</th>
+                    <th>Estado</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var reserva in Model)
+                {
+                    <tr>
+                        <td>@reserva.IdReserva</td>
+                        @if (funcionario)
+                        {
+                            <td>@(reserva.Leitor?.Nome) (ID @reserva.IdLeitor)</td>
+                        }
+                        <td>@(reserva.Livro?.Titulo)</td>
+                        <td>@reserva.DataReserva.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@(reserva.Ativa ? reserva.Ordem.ToString() : "—")</td>
+                        <td>
+                            @if (!reserva.Ativa)
+                            {
+                                <span>Inativa (ver histórico)</span>
+                            }
+                            else if (reserva.DataDisponivel.HasValue)
+                            {
+                                <span>Disponível para levantamento desde @reserva.DataDisponivel.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span>Em espera</span>
+                            }
+                        </td>
+                        <td>
+                            <a asp-action="Details" asp-route-id="@reserva.IdReserva" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                            @if (reserva.Ativa && !reserva.DataDisponivel.HasValue)
+                            {
+                                <a asp-action="Edit" asp-route-id="@reserva.IdReserva" class="btn btn-sm btn-outline-secondary">Alterar</a>
+                            }
+                            @if (reserva.Ativa)
+                            {
+                                <a asp-action="Cancelar" asp-route-id="@reserva.IdReserva" class="btn btn-sm btn-outline-danger">Cancelar</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

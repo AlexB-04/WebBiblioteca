@@ -1,0 +1,48 @@
+@model WebBiblioteca.Models.ReservaFormViewModel
+@{
+    ViewData["Title"] = "Nova reserva";
+    bool funcionario = User.IsInRole("Funcionario");
+}
+
+<h2>Nova reserva</h2>
+<p>É possível reservar apenas quando não restam exemplares livres. O limite e a posição na fila são verificados ao guardar.</p>
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    @if (funcionario)
+    {
+        <div class="mb-3">
+            <label asp-for="IdLeitor" class="form-label">Leitor</label>
+            <select asp-for="IdLeitor" class="form-select">
+                <option value="0">Selecione um leitor</option>
+                @foreach (var leitor in Model.Leitores)
+                {
+                    <option value="@leitor.IdLeitor">@leitor.Nome (ID @leitor.IdLeitor)</option>
+                }
+            </select>
+            <span asp-validation-for="IdLeitor" class="text-danger"></span>
+        </div>
+    }
+    else
+    {
+        <p>A reserva será associada à sua conta de leitor.</p>
+    }
+    <div class="mb-3">
+        <label asp-for="IdLivro" class="form-label">Livro</label>
+        <select asp-for="IdLivro" class="form-select">
+            <option value="0">Selecione um livro</option>
+            @foreach (var livro in Model.Livros)
+            {
+                <option value="@livro.IdLivro">@livro.Titulo (ID @livro.IdLivro; exemplares na biblioteca: @livro.ExemplaresDisponiveis)</option>
+            }
+        </select>
+        <span asp-validation-for="IdLivro" class="text-danger"></span>
+        <div class="form-text">A existência de exemplares na biblioteca não garante que estejam livres: podem estar destinados à fila.</div>
+    </div>
+    <button type="submit" class="btn btn-primary">Criar reserva</button>
+    <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+</form>
+
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}
