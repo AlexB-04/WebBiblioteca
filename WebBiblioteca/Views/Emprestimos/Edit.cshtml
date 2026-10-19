@@ -1,0 +1,28 @@
+@model WebBiblioteca.Models.PrazoEmprestimoViewModel
+@{
+    ViewData["Title"] = "Alterar prazo";
+    var emprestimo = Model.Emprestimo!;
+    DateTime maximo = emprestimo.DataEmprestimo.Date.AddDays(EmprestimoRegras.ObterDias(emprestimo.Leitor?.TipoUtilizador));
+    bool podeAlterar = emprestimo.Detalhes.All(d => d.DataDevolucao == null) && emprestimo.PrazoDevolucao.Date >= DateTime.Today;
+}
+<h2>Alterar prazo</h2>
+<partial name="_Resumo" model="emprestimo" />
+<p>O novo prazo deve estar entre hoje e <strong>@maximo.ToString("dd/MM/yyyy")</strong>, contado desde o levantamento e de acordo com o tipo atual do leitor. A alteração fica no histórico.</p>
+@if (!podeAlterar)
+{
+    <div class="alert alert-warning">Não é possível alterar o prazo após uma devolução ou quando o empréstimo já está em atraso.</div>
+}
+<form asp-action="Edit" asp-route-id="@Model.IdEmprestimo" method="post" class="col-md-6">
+    <input type="hidden" asp-for="IdEmprestimo" />
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    <div class="mb-3">
+        <label asp-for="PrazoDevolucao" class="form-label"></label>
+        <input asp-for="PrazoDevolucao" type="date" class="form-control" min="@DateTime.Today.ToString("yyyy-MM-dd")" max="@maximo.ToString("yyyy-MM-dd")" disabled="@(!podeAlterar)" />
+        <span asp-validation-for="PrazoDevolucao" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary" disabled="@(!podeAlterar)">Guardar prazo</button>
+    <a asp-action="Details" asp-route-id="@Model.IdEmprestimo" class="btn btn-secondary">Voltar</a>
+</form>
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

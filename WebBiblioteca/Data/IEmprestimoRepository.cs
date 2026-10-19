@@ -1,4 +1,4 @@
-﻿using WebBiblioteca.Models;
+using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
 {
@@ -6,6 +6,7 @@ namespace WebBiblioteca.Data
     {
         IQueryable<Emprestimo> GetAll(bool incluirEliminados = false);
         Task<Emprestimo?> GetByIdAsync(int id, bool incluirEliminados = false);
+        Task<string?> ObterErroCriacaoAsync(Emprestimo emprestimo);
         Task<bool> CreateAsync(Emprestimo emprestimo);
         Task<bool> DevolverLivroAsync(int idEmprestimo, int idLivro);
         Task<bool> AlterarPrazoAsync(int id, DateTime prazoDevolucao);

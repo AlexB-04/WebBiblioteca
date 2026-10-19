@@ -20,5 +20,6 @@
     </dd>
 </dl>
 <a asp-action="Edit" asp-route-id="@Model.IdLeitor" class="btn btn-warning">Editar</a>
+<a asp-controller="Emprestimos" asp-action="Index" asp-route-idLeitor="@Model.IdLeitor" class="btn btn-outline-primary">Empréstimos deste leitor</a>
 <a asp-action="Delete" asp-route-id="@Model.IdLeitor" class="btn btn-danger">Eliminar</a>
 <a asp-action="Index" class="btn btn-secondary">Voltar</a>

@@ -1,0 +1,30 @@
+@model WebBiblioteca.Models.OperacaoEmprestimoViewModel
+@{ ViewData["Title"] = Model.Titulo; var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-PT"); }
+<h2>@Model.Titulo</h2>
+<partial name="_Resumo" model="Model.Emprestimo" />
+<p>@Model.Mensagem</p>
+@if (Model.Acao == "Devolver")
+{
+    int dias = Math.Max(0, (DateTime.Today - Model.Emprestimo.PrazoDevolucao.Date).Days);
+    <p>Atraso hoje: <strong>@dias dia(s)</strong>. Multa prevista: <strong>@((dias * EmprestimoRegras.ValorPorDia).ToString("F2", cultura)) €</strong>.</p>
+    <p class="text-muted">O valor e a data efetiva são calculados no momento da confirmação.</p>
+}
+@if (Model.Acao == "Pagar")
+{
+    var p = Model.Emprestimo.Penalizacoes.First(p => p.IdPenalizacao == Model.IdPenalizacao);
+    <p>Penalização #@p.IdPenalizacao: <strong>@p.Valor.ToString("F2", cultura) €</strong> — @p.DiasAtraso dia(s) de atraso.</p>
+    <p>@p.Motivo</p>
+}
+@if (Model.Erro != null)
+{
+    <div class="alert alert-warning" role="alert">@Model.Erro</div>
+}
+else
+{
+    <form asp-action="@Model.Acao" asp-route-id="@Model.Emprestimo.IdEmprestimo" method="post" class="mb-3">
+        @if (Model.Acao == "Devolver") { <input type="hidden" name="idLivro" value="@Model.IdLivro" /> }
+        @if (Model.Acao == "Pagar") { <input type="hidden" name="idPenalizacao" value="@Model.IdPenalizacao" /> }
+        <button type="submit" class="btn @(Model.Acao == "Delete" ? "btn-danger" : "btn-primary")">@Model.Titulo</button>
+    </form>
+}
+<a asp-action="Details" asp-route-id="@Model.Emprestimo.IdEmprestimo" class="btn btn-secondary">Voltar ao empréstimo</a>

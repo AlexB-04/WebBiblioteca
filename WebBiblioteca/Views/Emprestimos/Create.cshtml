@@ -1,0 +1,55 @@
+@model WebBiblioteca.Models.EmprestimoViewModel
+@{ ViewData["Title"] = "Novo empréstimo"; }
+
+<h2>Novo empréstimo</h2>
+<p>Selecione o leitor e um ou mais livros. A data do levantamento é registada automaticamente.</p>
+<div class="alert alert-info">
+    Prazo a contar de hoje: <strong>Aluno 15 dias · Professor 30 dias · Público em Geral 7 dias</strong>.
+    O limite de livros, os atrasos, as penalizações e a fila de reservas são verificados ao guardar.
+</div>
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    <div class="mb-3">
+        <label asp-for="IdLeitor" class="form-label"></label>
+        <select asp-for="IdLeitor" class="form-select">
+            <option value="0">Selecione um leitor</option>
+            @foreach (var leitor in Model.Leitores)
+            {
+                <option value="@leitor.IdLeitor">@(leitor.CodigoLeitor ?? $"ID {leitor.IdLeitor}") — @leitor.Nome (@leitor.TipoUtilizador; limite: @leitor.LimiteEmprestimos)</option>
+            }
+        </select>
+        <span asp-validation-for="IdLeitor" class="text-danger"></span>
+        <div class="form-text">As contas que aguardam confirmação ou definição da palavra-passe não podem receber novos empréstimos.</div>
+    </div>
+    @if (Model.Leitores.Count == 0)
+    {
+        <div class="alert alert-warning">Não existem leitores disponíveis. A criação de contas é feita pelo próprio leitor e confirmada pelo administrador.</div>
+    }
+    <fieldset>
+        <legend class="h5">Livros a emprestar</legend>
+        <p class="text-muted">Os exemplares na biblioteca podem estar destinados à fila de reservas. A disponibilidade para este leitor é confirmada ao guardar.</p>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead><tr><th>Selecionar</th><th>Título</th><th>Autor</th><th>Exemplares na biblioteca</th></tr></thead>
+                <tbody>
+                @foreach (var livro in Model.Livros)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="IdsLivros" value="@livro.IdLivro" id="livro-@livro.IdLivro" class="form-check-input"
+                            checked="@Model.IdsLivros.Contains(livro.IdLivro)" disabled="@(livro.ExemplaresDisponiveis <= 0)" /></td>
+                        <td><label for="livro-@livro.IdLivro">@livro.Titulo</label></td>
+                        <td>@livro.Autor</td>
+                        <td>@livro.ExemplaresDisponiveis</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (Model.Livros.Count == 0) { <p>Não existem livros no catálogo.</p> }
+    </fieldset>
+    <button type="submit" class="btn btn-primary" disabled="@(Model.Leitores.Count == 0 || !Model.Livros.Any(l => l.ExemplaresDisponiveis > 0))">Registar empréstimo</button>
+    <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+</form>
+@section Scripts {
+    @{ await Html.RenderPartialAsync("_ValidationScriptsPartial"); }
+}

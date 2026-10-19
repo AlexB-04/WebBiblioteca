@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Data;
@@ -12,19 +13,13 @@ namespace WebBiblioteca.Controllers.API
     public class EmprestimosController : Controller
     {
         private readonly IEmprestimoRepository _emprestimoRepository;
-        private readonly ILeitorRepository _leitorRepository;
-        private readonly ILivroRepository _livroRepository;
         private readonly IReservaRepository _reservaRepository;
 
         public EmprestimosController(
             IEmprestimoRepository emprestimoRepository,
-            ILeitorRepository leitorRepository,
-            ILivroRepository livroRepository,
             IReservaRepository reservaRepository)
         {
             _emprestimoRepository = emprestimoRepository;
-            _leitorRepository = leitorRepository;
-            _livroRepository = livroRepository;
             _reservaRepository = reservaRepository;
         }
 
@@ -185,6 +180,10 @@ namespace WebBiblioteca.Controllers.API
             {
                 return BadRequest("Não foi possível guardar a alteração do prazo.");
             }
+            catch (DbException)
+            {
+                return Conflict("Ocorreu um conflito de acesso à base de dados. Atualize e tente novamente.");
+            }
 
             return Ok();
         }
@@ -227,6 +226,10 @@ namespace WebBiblioteca.Controllers.API
             {
                 return BadRequest("Não foi possível guardar o pagamento.");
             }
+            catch (DbException)
+            {
+                return Conflict("Ocorreu um conflito de acesso à base de dados. Atualize e tente novamente.");
+            }
 
             return Ok();
         }
@@ -238,134 +241,26 @@ namespace WebBiblioteca.Controllers.API
             try
             {
                 await _reservaRepository.AtualizarReservasExpiradasAsync();
+                string? erro = await _emprestimoRepository.ObterErroCriacaoAsync(emprestimo);
+
+                if (erro != null)
+                {
+                    return BadRequest(erro);
+                }
+
+                if (!await _emprestimoRepository.CreateAsync(emprestimo))
+                {
+                    return BadRequest("Os dados foram alterados. Atualize e verifique o leitor, o limite e a disponibilidade dos livros.");
+                }
+
             }
             catch (DbUpdateException)
             {
-                return BadRequest("Não foi possível atualizar os prazos das reservas. Tente novamente.");
+                return Conflict("Não foi possível guardar o empréstimo. Atualize os dados e tente novamente.");
             }
-
-            if (emprestimo == null)
+            catch (DbException)
             {
-                return BadRequest("Dados do empréstimo inválidos.");
-            }
-
-            if (emprestimo.IdLeitor <= 0)
-            {
-                return BadRequest("Indique um leitor válido.");
-            }
-
-            if (emprestimo.Detalhes == null || emprestimo.Detalhes.Count == 0)
-            {
-                return BadRequest("Selecione pelo menos um livro.");
-            }
-
-            bool leitorExiste = await _emprestimoRepository.LeitorExisteAsync(emprestimo.IdLeitor);
-
-            if (!leitorExiste)
-            {
-                return BadRequest("O leitor indicado não existe.");
-            }
-
-            var leitor = await _leitorRepository.GetByIdAsync(emprestimo.IdLeitor);
-
-            if (leitor == null)
-            {
-                return BadRequest("O leitor indicado não existe.");
-            }
-
-            if (leitor.BloqueadoAte.HasValue && leitor.BloqueadoAte.Value > DateTime.Now)
-            {
-                return BadRequest("O leitor está temporariamente bloqueado.");
-            }
-
-            if (leitor.TipoUtilizador != "Aluno" &&
-                leitor.TipoUtilizador != "Professor" &&
-                leitor.TipoUtilizador != "Público em Geral")
-            {
-                return BadRequest("O tipo de utilizador do leitor é inválido.");
-            }
-
-            bool temAtraso = await _emprestimoRepository
-                .TemEmprestimosEmAtrasoAsync(leitor.IdLeitor);
-
-            if (temAtraso)
-            {
-                return BadRequest("O leitor possui livros com devolução em atraso.");
-            }
-
-            bool temMulta = await _emprestimoRepository
-                .TemPenalizacoesPorPagarAsync(leitor.IdLeitor);
-
-            if (temMulta)
-            {
-                return BadRequest("O leitor possui penalizações por pagar.");
-            }
-
-            var idsLivros = new List<int>();
-
-            foreach (var detalhe in emprestimo.Detalhes)
-            {
-                if (detalhe == null || detalhe.IdLivro <= 0)
-                {
-                    return BadRequest("Indique livros válidos nos detalhes do empréstimo.");
-                }
-
-                if (idsLivros.Contains(detalhe.IdLivro))
-                {
-                    return BadRequest("O mesmo livro não pode aparecer duas vezes no empréstimo.");
-                }
-
-                idsLivros.Add(detalhe.IdLivro);
-
-                var livro = await _livroRepository.GetByIdAsync(detalhe.IdLivro);
-
-                if (livro == null)
-                {
-                    return BadRequest("Um dos livros indicados não existe.");
-                }
-
-                bool jaTemLivro = await _emprestimoRepository
-                    .TemLivroEmprestadoAsync(leitor.IdLeitor, livro.IdLivro);
-
-                if (jaTemLivro)
-                {
-                    return BadRequest("O leitor já tem um empréstimo ativo de um dos livros.");
-                }
-
-                if (livro.ExemplaresDisponiveis <= 0)
-                {
-                    return BadRequest("Um dos livros não tem exemplares disponíveis.");
-                }
-
-                bool podeEmprestar = await _reservaRepository
-                    .PodeEmprestarAsync(leitor.IdLeitor, livro.IdLivro);
-
-                if (!podeEmprestar)
-                {
-                    return BadRequest("Os exemplares de um dos livros estão destinados a outros leitores na fila de reservas.");
-                }
-            }
-
-            int livrosEmprestados = await _emprestimoRepository
-                .ContarLivrosEmprestadosAsync(leitor.IdLeitor);
-
-            if (livrosEmprestados + idsLivros.Count > leitor.LimiteEmprestimos)
-            {
-                return BadRequest("O empréstimo ultrapassa o limite de livros do leitor.");
-            }
-
-            try
-            {
-                bool criado = await _emprestimoRepository.CreateAsync(emprestimo);
-
-                if (!criado)
-                {
-                    return BadRequest("Não foi possível criar o empréstimo. Atualize os dados e verifique a disponibilidade dos livros.");
-                }
-            }
-            catch (DbUpdateException)
-            {
-                return BadRequest("Não foi possível guardar o empréstimo. Verifique o leitor e os livros associados.");
+                return Conflict("Ocorreu um conflito de acesso à base de dados. Atualize os dados e tente novamente.");
             }
 
             var emprestimoCriado = await _emprestimoRepository.GetByIdAsync(emprestimo.IdEmprestimo);
@@ -466,6 +361,10 @@ namespace WebBiblioteca.Controllers.API
             {
                 return BadRequest("Não foi possível guardar a devolução. Verifique os dados associados.");
             }
+            catch (DbException)
+            {
+                return Conflict("Ocorreu um conflito de acesso à base de dados. Atualize e tente novamente.");
+            }
 
             var emprestimoAtualizado = await _emprestimoRepository.GetByIdAsync(id);
 
@@ -520,7 +419,7 @@ namespace WebBiblioteca.Controllers.API
         [HttpDelete]
         [ValidateAntiForgeryToken]
         [Route("{id}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> DeleteEmprestimo(int id)
         {
             var emprestimo = await _emprestimoRepository.GetByIdAsync(id);
 
@@ -551,6 +450,10 @@ namespace WebBiblioteca.Controllers.API
             catch (DbUpdateException)
             {
                 return BadRequest("Não foi possível guardar a eliminação do empréstimo.");
+            }
+            catch (DbException)
+            {
+                return Conflict("Ocorreu um conflito de acesso à base de dados. Atualize e tente novamente.");
             }
 
             return Ok();

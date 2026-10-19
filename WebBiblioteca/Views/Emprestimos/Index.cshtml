@@ -1,0 +1,71 @@
+@model IEnumerable<WebBiblioteca.Models.Emprestimo>
+@{ ViewData["Title"] = "Empréstimos e devoluções"; }
+
+<h2>Empréstimos e devoluções</h2>
+<p>Registe levantamentos, acompanhe os prazos e devolva cada livro no respetivo empréstimo.</p>
+@if (TempData["EmprestimoMessage"] != null)
+{
+    <div class="alert alert-success" role="status">@TempData["EmprestimoMessage"]</div>
+}
+<div class="d-flex gap-2 flex-wrap mb-3">
+    <a asp-action="Create" asp-route-idLeitor="@ViewBag.IdLeitor" class="btn btn-primary">Novo empréstimo</a>
+    <a asp-action="Penalizacoes" class="btn btn-outline-secondary">Penalizações e pagamentos</a>
+</div>
+<form method="get" asp-action="Index" class="row g-2 mb-3">
+    <input type="hidden" name="idLeitor" value="@ViewBag.IdLeitor" />
+    <div class="col-md-6">
+        <label for="pesquisa" class="form-label">Leitor, código, título ou ID do empréstimo</label>
+        <input id="pesquisa" name="pesquisa" value="@ViewBag.Pesquisa" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label for="estado" class="form-label">Estado</label>
+        <select id="estado" name="estado" class="form-select">
+            <option value="">Todos os não eliminados</option>
+            <option value="Ativos" selected="@(ViewBag.Estado == "Ativos")">Com livros por devolver</option>
+            <option value="Atrasados" selected="@(ViewBag.Estado == "Atrasados")">Em atraso</option>
+            <option value="Concluidos" selected="@(ViewBag.Estado == "Concluidos")">Todos os livros devolvidos</option>
+            <option value="PorPagar" selected="@(ViewBag.Estado == "PorPagar")">Com penalizações por pagar</option>
+            <option value="Eliminados" selected="@(ViewBag.Estado == "Eliminados")">Eliminados (histórico)</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex align-items-end gap-2">
+        <button class="btn btn-primary" type="submit">Pesquisar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Limpar</a>
+    </div>
+</form>
+@if (ViewBag.IdLeitor != null)
+{
+    <p>A mostrar apenas empréstimos do leitor com ID @ViewBag.IdLeitor. <a asp-action="Index">Ver todos</a></p>
+}
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Não foram encontrados empréstimos para estes filtros.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>ID</th><th>Leitor</th><th>Livros</th><th>Prazo</th><th>Estado</th><th>Por pagar</th><th>Ações</th></tr></thead>
+            <tbody>
+            @foreach (var e in Model)
+            {
+                int porDevolver = e.Detalhes.Count(d => d.DataDevolucao == null);
+                <tr>
+                    <td>@e.IdEmprestimo</td>
+                    <td>@e.Leitor?.Nome<br /><small>@(e.Leitor?.CodigoLeitor ?? $"ID {e.IdLeitor}")</small></td>
+                    <td>@string.Join(", ", e.Detalhes.Select(d => d.Livro?.Titulo))<br /><small>@porDevolver por devolver / @e.Detalhes.Count</small></td>
+                    <td class="text-nowrap">@e.PrazoDevolucao.ToString("dd/MM/yyyy")</td>
+                    <td>
+                        @if (e.Eliminado) { <span class="badge bg-secondary">Eliminado</span> }
+                        else if (porDevolver == 0) { <span class="badge bg-success">Devolvido</span> }
+                        else if (e.PrazoDevolucao.Date < DateTime.Today) { <span class="badge bg-danger">Em atraso</span> }
+                        else { <span class="badge bg-primary">Ativo</span> }
+                    </td>
+                    <td class="text-nowrap">@e.Penalizacoes.Where(p => !p.Pago).Sum(p => p.Valor).ToString("F2", System.Globalization.CultureInfo.GetCultureInfo("pt-PT")) €</td>
+                    <td><a asp-action="Details" asp-route-id="@e.IdEmprestimo" class="btn btn-sm btn-outline-primary">Detalhes</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

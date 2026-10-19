@@ -1,0 +1,93 @@
+@model WebBiblioteca.Models.Emprestimo
+@{
+    ViewData["Title"] = "Detalhes do empréstimo";
+    var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-PT");
+}
+<h2>Detalhes do empréstimo</h2>
+@if (TempData["EmprestimoMessage"] != null)
+{
+    <div class="alert alert-success" role="status">@TempData["EmprestimoMessage"]</div>
+}
+@if (Model.Eliminado)
+{
+    <div class="alert alert-secondary">Eliminado em @Model.DataEliminacao?.ToString("dd/MM/yyyy HH:mm"). Histórico disponível apenas para consulta.</div>
+}
+@if (Model.Leitor?.BloqueadoAte > DateTime.Now)
+{
+    <div class="alert alert-warning">O leitor está bloqueado para novos empréstimos até @Model.Leitor.BloqueadoAte.Value.ToString("dd/MM/yyyy HH:mm").</div>
+}
+<partial name="_Resumo" model="Model" />
+<div class="d-flex gap-2 flex-wrap mb-4">
+    @if (!Model.Eliminado)
+    {
+        @if (Model.Detalhes.All(d => d.DataDevolucao == null) && Model.PrazoDevolucao.Date >= DateTime.Today)
+        {
+            <a asp-action="Edit" asp-route-id="@Model.IdEmprestimo" class="btn btn-warning">Alterar prazo</a>
+        }
+        <a asp-action="Delete" asp-route-id="@Model.IdEmprestimo" class="btn btn-outline-danger">Eliminar</a>
+    }
+    <a asp-controller="Leitores" asp-action="Details" asp-route-id="@Model.IdLeitor" class="btn btn-outline-secondary">Ficha do leitor</a>
+    <a asp-action="Index" class="btn btn-secondary">Voltar</a>
+</div>
+<h3 class="h4">Livros e devoluções</h3>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead><tr><th>Livro</th><th>Devolução</th><th>Atraso</th><th>Ação</th></tr></thead>
+        <tbody>
+        @foreach (var detalhe in Model.Detalhes.OrderBy(d => d.IdEmprestimoDetalhe))
+        {
+            int atraso = Math.Max(0, ((detalhe.DataDevolucao ?? DateTime.Now).Date - Model.PrazoDevolucao.Date).Days);
+            <tr>
+                <td>@detalhe.Livro?.Titulo</td>
+                <td>@(detalhe.DataDevolucao?.ToString("dd/MM/yyyy HH:mm") ?? "Por devolver")</td>
+                <td>@atraso dia(s)
+                    @if (detalhe.DataDevolucao == null && atraso > 0)
+                    { <br /><small>Estimativa: @((atraso * EmprestimoRegras.ValorPorDia).ToString("F2", cultura)) €</small> }
+                </td>
+                <td>
+                    @if (!Model.Eliminado && detalhe.DataDevolucao == null)
+                    { <a asp-action="Devolver" asp-route-id="@Model.IdEmprestimo" asp-route-idLivro="@detalhe.IdLivro" class="btn btn-sm btn-primary">Devolver</a> }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+<p class="text-muted">A multa é registada na devolução: @EmprestimoRegras.ValorPorDia.ToString("F2", cultura) € por livro e por dia de atraso. A partir de @EmprestimoRegras.LimiteAtrasos devoluções em atraso, aplica-se um bloqueio de @EmprestimoRegras.DiasBloqueio dias.</p>
+<h3 class="h4">Penalizações e pagamentos</h3>
+@if (!Model.Penalizacoes.Any()) { <p>Não há penalizações registadas neste empréstimo.</p> }
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Livro</th><th>Dias</th><th>Valor</th><th>Registo</th><th>Pagamento</th><th>Ação</th></tr></thead>
+            <tbody>
+            @foreach (var p in Model.Penalizacoes.OrderBy(p => p.IdPenalizacao))
+            {
+                <tr>
+                    <td>@Model.Detalhes.FirstOrDefault(d => d.IdEmprestimoDetalhe == p.IdEmprestimoDetalhe)?.Livro?.Titulo</td>
+                    <td>@p.DiasAtraso</td><td class="text-nowrap">@p.Valor.ToString("F2", cultura) €</td>
+                    <td>@p.DataPenalizacao.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@(p.Pago ? "Pago em " + p.DataPagamento?.ToString("dd/MM/yyyy HH:mm") : "Por pagar")</td>
+                    <td>@if (!Model.Eliminado && !p.Pago)
+                        { <a asp-action="Pagar" asp-route-id="@Model.IdEmprestimo" asp-route-idPenalizacao="@p.IdPenalizacao" class="btn btn-sm btn-success">Registar pagamento</a> }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <p><strong>Por pagar: @Model.Penalizacoes.Where(p => !p.Pago).Sum(p => p.Valor).ToString("F2", cultura) €</strong></p>
+}
+<h3 class="h4">Histórico de alterações do prazo</h3>
+@if (!Model.Alteracoes.Any()) { <p>O prazo não foi alterado.</p> }
+else
+{
+    <div class="table-responsive">
+        <table class="table">
+            <thead><tr><th>Alteração</th><th>Prazo anterior</th><th>Novo prazo</th></tr></thead>
+            <tbody>@foreach (var a in Model.Alteracoes.OrderBy(a => a.DataAlteracao))
+            { <tr><td>@a.DataAlteracao.ToString("dd/MM/yyyy HH:mm")</td><td>@a.PrazoAnterior.ToString("dd/MM/yyyy")</td><td>@a.PrazoNovo.ToString("dd/MM/yyyy")</td></tr> }</tbody>
+        </table>
+    </div>
+}

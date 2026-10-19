@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
 using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
@@ -84,112 +85,72 @@ namespace WebBiblioteca.Data
                 detalhe.DataDevolucao == null);
         }
 
-        public async Task<bool> CreateAsync(Emprestimo emprestimo)
+        // Partilhada pelo MVC e pela API. CreateAsync volta a validar dentro da transação.
+        public async Task<string?> ObterErroCriacaoAsync(Emprestimo emprestimo)
         {
-            await _reservaRepository.AtualizarReservasExpiradasAsync();
+            if (emprestimo == null || emprestimo.IdLeitor <= 0)
+                return "Selecione um leitor válido.";
+            if (emprestimo.Detalhes == null || emprestimo.Detalhes.Count == 0)
+                return "Selecione pelo menos um livro.";
 
-            if (emprestimo == null || emprestimo.Detalhes == null ||
-                emprestimo.Detalhes.Count == 0)
-            {
-                return false;
-            }
-
-            var leitor = await _context.Leitores
-                .AsNoTracking()
-                .FirstOrDefaultAsync(leitorDaLista =>
-                    leitorDaLista.IdLeitor == emprestimo.IdLeitor);
-
-            if (leitor == null)
-            {
-                return false;
-            }
-
-            DateTime agora = DateTime.Now;
-
-            if (leitor.BloqueadoAte.HasValue && leitor.BloqueadoAte.Value > agora)
-            {
-                return false;
-            }
-
-            int diasEmprestimo = ObterDiasEmprestimo(leitor.TipoUtilizador);
-
-            if (diasEmprestimo == 0)
-            {
-                return false;
-            }
-
-            bool temAtraso = await TemEmprestimosEmAtrasoAsync(leitor.IdLeitor);
-
-            if (temAtraso)
-            {
-                return false;
-            }
-
-            bool temMulta = await TemPenalizacoesPorPagarAsync(leitor.IdLeitor);
-
-            if (temMulta)
-            {
-                return false;
-            }
+            var leitor = await _context.Leitores.Include(leitor => leitor.User).AsNoTracking()
+                .FirstOrDefaultAsync(leitor => leitor.IdLeitor == emprestimo.IdLeitor);
+            if (leitor == null) return "O leitor indicado não existe.";
+            // Conservar fichas antigas sem conta. Uma conta associada tem de estar ativa.
+            if (leitor.UserId != null && (leitor.User == null || !leitor.User.Aprovado ||
+                leitor.User.DeveAlterarPassword || !leitor.User.EmailConfirmed))
+                return "A conta do leitor aguarda confirmação do administrador ou definição da palavra-passe.";
+            if (leitor.BloqueadoAte.HasValue && leitor.BloqueadoAte.Value > DateTime.Now)
+                return "O leitor está temporariamente bloqueado até " + leitor.BloqueadoAte.Value.ToString("dd/MM/yyyy HH:mm") + ".";
+            if (EmprestimoRegras.ObterDias(leitor.TipoUtilizador) == 0)
+                return "O tipo de utilizador do leitor é inválido.";
+            if (await TemEmprestimosEmAtrasoAsync(leitor.IdLeitor))
+                return "O leitor possui livros com devolução em atraso.";
+            if (await TemPenalizacoesPorPagarAsync(leitor.IdLeitor))
+                return "O leitor possui penalizações por pagar.";
 
             var idsLivros = new List<int>();
-
             foreach (var detalhe in emprestimo.Detalhes)
             {
                 if (detalhe == null || detalhe.IdLivro <= 0)
-                {
-                    return false;
-                }
-
+                    return "Selecione livros válidos.";
                 if (idsLivros.Contains(detalhe.IdLivro))
-                {
-                    return false;
-                }
-
+                    return "O mesmo livro não pode aparecer duas vezes no empréstimo.";
                 idsLivros.Add(detalhe.IdLivro);
             }
+            int emprestados = await ContarLivrosEmprestadosAsync(leitor.IdLeitor);
+            if (emprestados + idsLivros.Count > leitor.LimiteEmprestimos)
+                return $"O leitor tem {emprestados} livro(s) por devolver e um limite de {leitor.LimiteEmprestimos}. A seleção ultrapassa esse limite.";
 
-            int livrosEmprestados = await ContarLivrosEmprestadosAsync(leitor.IdLeitor);
-
-            if (livrosEmprestados + idsLivros.Count > leitor.LimiteEmprestimos)
+            foreach (int idLivro in idsLivros.OrderBy(id => id))
             {
-                return false;
+                var livro = await _context.Livros.AsNoTracking().FirstOrDefaultAsync(livro => livro.IdLivro == idLivro);
+                if (livro == null) return "Um dos livros selecionados já não existe.";
+                if (await TemLivroEmprestadoAsync(leitor.IdLeitor, idLivro))
+                    return $"O leitor já tem o livro «{livro.Titulo}» por devolver.";
+                if (livro.ExemplaresDisponiveis <= 0)
+                    return $"O livro «{livro.Titulo}» não tem exemplares disponíveis.";
+                if (!await _reservaRepository.PodeEmprestarAsync(leitor.IdLeitor, idLivro))
+                    return $"Os exemplares de «{livro.Titulo}» estão destinados a outros leitores na fila de reservas.";
             }
+            return null;
+        }
 
-            bool livroJaEmprestado = await _context.EmprestimoDetalhes
-                .AnyAsync(detalhe =>
-                    detalhe.Emprestimo != null &&
-                    detalhe.Emprestimo.IdLeitor == leitor.IdLeitor &&
-                    detalhe.DataDevolucao == null &&
-                    idsLivros.Contains(detalhe.IdLivro));
+        public async Task<bool> CreateAsync(Emprestimo emprestimo)
+        {
+            // A leitura das regras e a escrita do stock pertencem à mesma operação.
+            // Serializable impede que dois pedidos usem o mesmo último exemplar.
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await _reservaRepository.AtualizarReservasExpiradasAsync();
+            if (await ObterErroCriacaoAsync(emprestimo) != null) return false;
 
-            if (livroJaEmprestado)
-            {
-                return false;
-            }
-
-            var livros = await _context.Livros
-                .Where(livro => idsLivros.Contains(livro.IdLivro))
-                .OrderBy(livro => livro.IdLivro)
-                .ToListAsync();
-
-            if (livros.Count != idsLivros.Count ||
-                livros.Any(livro => livro.ExemplaresDisponiveis <= 0))
-            {
-                return false;
-            }
-
-            // Validar TODOS os livros antes de descontar stock ou concluir reservas.
-            foreach (var livro in livros)
-            {
-                bool podeEmprestar = await _reservaRepository
-                    .PodeEmprestarAsync(leitor.IdLeitor, livro.IdLivro);
-
-                if (!podeEmprestar)
-                {
-                    return false;
-                }
-            }
+            var leitor = await _context.Leitores.AsNoTracking()
+                .FirstAsync(leitor => leitor.IdLeitor == emprestimo.IdLeitor);
+            DateTime agora = DateTime.Now;
+            int diasEmprestimo = EmprestimoRegras.ObterDias(leitor.TipoUtilizador);
+            var idsLivros = emprestimo.Detalhes.Select(detalhe => detalhe.IdLivro).ToList();
+            var livros = await _context.Livros.Where(livro => idsLivros.Contains(livro.IdLivro))
+                .OrderBy(livro => livro.IdLivro).ToListAsync();
 
             var novoEmprestimo = new Emprestimo
             {
@@ -215,6 +176,7 @@ namespace WebBiblioteca.Data
 
             // O mesmo DataContext guarda empréstimo, detalhes, stock, reserva e histórico.
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             emprestimo.IdEmprestimo = novoEmprestimo.IdEmprestimo;
 
@@ -223,6 +185,7 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> DevolverLivroAsync(int idEmprestimo, int idLivro)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             await _reservaRepository.AtualizarReservasExpiradasAsync();
 
             if (idEmprestimo <= 0 || idLivro <= 0)
@@ -264,14 +227,12 @@ namespace WebBiblioteca.Data
 
             if (diasAtraso > 0)
             {
-                const decimal valorPorDia = 0.50m;
-
                 var penalizacao = new Penalizacao
                 {
                     IdEmprestimo = detalhe.IdEmprestimo,
                     IdEmprestimoDetalhe = detalhe.IdEmprestimoDetalhe,
                     DiasAtraso = diasAtraso,
-                    Valor = diasAtraso * valorPorDia,
+                    Valor = diasAtraso * EmprestimoRegras.ValorPorDia,
                     Motivo = $"Atraso de {diasAtraso} dia(s) na devolução do livro com ID {detalhe.IdLivro}.",
                     DataPenalizacao = agora,
                     Pago = false,
@@ -282,9 +243,9 @@ namespace WebBiblioteca.Data
 
                 leitor.Atrasos++;
 
-                if (leitor.Atrasos >= 3)
+                if (leitor.Atrasos >= EmprestimoRegras.LimiteAtrasos)
                 {
-                    DateTime novoBloqueio = agora.AddDays(7);
+                    DateTime novoBloqueio = agora.AddDays(EmprestimoRegras.DiasBloqueio);
 
                     if (!leitor.BloqueadoAte.HasValue || leitor.BloqueadoAte.Value < novoBloqueio)
                     {
@@ -300,12 +261,14 @@ namespace WebBiblioteca.Data
 
             // Devolução, exemplar, penalização e disponibilidade da fila são guardados juntos.
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
         }
 
         public async Task<bool> AlterarPrazoAsync(int id, DateTime prazoDevolucao)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var emprestimo = await _context.Emprestimos
                 .Include(emprestimoDaLista => emprestimoDaLista.Leitor)
                 .Include(emprestimoDaLista => emprestimoDaLista.Detalhes)
@@ -323,7 +286,7 @@ namespace WebBiblioteca.Data
                 return false;
             }
 
-            int diasEmprestimo = ObterDiasEmprestimo(emprestimo.Leitor.TipoUtilizador);
+            int diasEmprestimo = EmprestimoRegras.ObterDias(emprestimo.Leitor.TipoUtilizador);
             DateTime novoPrazo = prazoDevolucao.Date;
 
             if (diasEmprestimo == 0 || novoPrazo < DateTime.Today ||
@@ -348,12 +311,14 @@ namespace WebBiblioteca.Data
             emprestimo.PrazoDevolucao = novoPrazo;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var emprestimo = await _context.Emprestimos
                 .Include(emprestimoDaLista => emprestimoDaLista.Detalhes)
                 .Include(emprestimoDaLista => emprestimoDaLista.Penalizacoes)
@@ -376,12 +341,14 @@ namespace WebBiblioteca.Data
             emprestimo.DataEliminacao = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
         }
 
         public async Task<bool> PagarPenalizacaoAsync(int idEmprestimo, int idPenalizacao)
         {
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var penalizacao = await _context.Penalizacoes
                 .FirstOrDefaultAsync(penalizacaoDaLista =>
                     penalizacaoDaLista.IdPenalizacao == idPenalizacao &&
@@ -398,28 +365,10 @@ namespace WebBiblioteca.Data
             penalizacao.DataPagamento = DateTime.Now;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return true;
         }
 
-        private int ObterDiasEmprestimo(string? tipoUtilizador)
-        {
-            if (tipoUtilizador == "Professor")
-            {
-                return 30;
-            }
-
-            if (tipoUtilizador == "Aluno")
-            {
-                return 15;
-            }
-
-            if (tipoUtilizador == "Público em Geral")
-            {
-                return 7;
-            }
-
-            return 0;
-        }
     }
 }

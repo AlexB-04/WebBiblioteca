@@ -1,0 +1,7 @@
+@model WebBiblioteca.Models.Emprestimo
+<dl class="row">
+    <dt class="col-sm-3">Empréstimo</dt><dd class="col-sm-9">#@Model.IdEmprestimo</dd>
+    <dt class="col-sm-3">Leitor</dt><dd class="col-sm-9">@Model.Leitor?.Nome — @(Model.Leitor?.CodigoLeitor ?? $"ID {Model.IdLeitor}")</dd>
+    <dt class="col-sm-3">Levantamento</dt><dd class="col-sm-9">@Model.DataEmprestimo.ToString("dd/MM/yyyy HH:mm")</dd>
+    <dt class="col-sm-3">Prazo de devolução</dt><dd class="col-sm-9">@Model.PrazoDevolucao.ToString("dd/MM/yyyy")</dd>
+</dl>

@@ -1,0 +1,37 @@
+@model IEnumerable<WebBiblioteca.Models.Penalizacao>
+@{ ViewData["Title"] = "Penalizações e pagamentos"; var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-PT"); }
+<h2>Penalizações e pagamentos</h2>
+<p>As multas são calculadas na devolução de cada livro em atraso. Registe aqui os pagamentos recebidos.</p>
+<form asp-action="Penalizacoes" method="get" class="d-flex gap-2 flex-wrap align-items-center mb-3">
+    <label for="estado">Estado</label>
+    <select name="estado" id="estado" class="form-select w-auto">
+        <option value="PorPagar">Por pagar</option>
+        <option value="Pagas" selected="@(ViewBag.Estado == "Pagas")">Pagas</option>
+        <option value="Todas" selected="@(ViewBag.Estado == "Todas")">Todas</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+    <a asp-action="Index" class="btn btn-secondary">Voltar aos empréstimos</a>
+</form>
+@if (!Model.Any()) { <div class="alert alert-info">Não foram encontradas penalizações para este filtro.</div> }
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Leitor</th><th>Empréstimo</th><th>Motivo</th><th>Valor</th><th>Estado</th><th>Ações</th></tr></thead>
+            <tbody>@foreach (var p in Model)
+            {
+                <tr>
+                    <td>@p.Emprestimo?.Leitor?.Nome<br /><small>@p.Emprestimo?.Leitor?.CodigoLeitor</small></td>
+                    <td>#@p.IdEmprestimo</td><td>@p.Motivo</td><td class="text-nowrap">@p.Valor.ToString("F2", cultura) €</td>
+                    <td>@(p.Pago ? "Pago em " + p.DataPagamento?.ToString("dd/MM/yyyy HH:mm") : "Por pagar")</td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@p.IdEmprestimo" class="btn btn-sm btn-outline-primary">Detalhes</a>
+                        @if (!p.Pago && p.Emprestimo?.Eliminado != true)
+                        { <a asp-action="Pagar" asp-route-id="@p.IdEmprestimo" asp-route-idPenalizacao="@p.IdPenalizacao" class="btn btn-sm btn-success">Registar pagamento</a> }
+                    </td>
+                </tr>
+            }</tbody>
+        </table>
+    </div>
+    <p>Total apresentado: <strong>@Model.Sum(p => p.Valor).ToString("F2", cultura) €</strong></p>
+}
