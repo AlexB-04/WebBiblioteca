@@ -13,6 +13,33 @@
     </p>
 }
 
+<form asp-action="Index" method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <label for="pesquisa" class="form-label">Título, autor ou categoria</label>
+        <input type="search" id="pesquisa" name="pesquisa" value="@ViewBag.Pesquisa"
+               class="form-control" placeholder="Pesquisar livros" />
+    </div>
+    <div class="col-md-3">
+        <label for="idCategoria" class="form-label">Categoria</label>
+        <select id="idCategoria" name="idCategoria" class="form-select" asp-items="ViewBag.Categorias">
+            <option value="">Todas as categorias</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label for="estado" class="form-label">Disponibilidade</label>
+        <select id="estado" name="estado" class="form-select">
+            <option value="">Todos os livros</option>
+            <option value="Disponiveis" selected="@(ViewBag.Estado == "Disponiveis")">Disponíveis</option>
+            <option value="Emprestados" selected="@(ViewBag.Estado == "Emprestados")">Emprestados</option>
+            <option value="Reservados" selected="@(ViewBag.Estado == "Reservados")">Reservados</option>
+        </select>
+    </div>
+    <div class="col-md-2 align-self-end">
+        <button type="submit" class="btn btn-primary">Pesquisar</button>
+        <a asp-action="Index" class="btn btn-secondary">Limpar</a>
+    </div>
+</form>
+
 <div class="table-responsive">
     <table class="table table-hover table-striped">
         <thead>
@@ -23,7 +50,7 @@
                 <th>Editora</th>
                 <th>Ano</th>
                 <th>Género</th>
-                <th>Exemplares disponíveis</th>
+                <th>Exemplares na biblioteca</th>
                 <th>Categoria</th>
                 <th>Ações</th>
             </tr>
@@ -66,6 +93,12 @@
                             <a asp-action="Delete" asp-route-id="@item.IdLivro" class="btn btn-danger">Eliminar</a>
                         }
                     </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="9">Não foram encontrados livros com os filtros indicados.</td>
                 </tr>
             }
         </tbody>

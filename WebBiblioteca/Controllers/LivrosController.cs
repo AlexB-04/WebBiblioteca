@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using System.IO;
 using WebBiblioteca.Data;
@@ -13,20 +14,49 @@ namespace WebBiblioteca.Controllers
     {
         private readonly ILivroRepository _livroRepository;
         private readonly ICategoriaRepository _categoriaRepository;
+        private readonly IReservaRepository _reservaRepository;
         private readonly IImageHelper _imageHelper;
 
         public LivrosController(ILivroRepository livroRepository,
-            ICategoriaRepository categoriaRepository, IImageHelper imageHelper)
+            ICategoriaRepository categoriaRepository, IReservaRepository reservaRepository,
+            IImageHelper imageHelper)
         {
             _livroRepository = livroRepository;
             _categoriaRepository = categoriaRepository;
+            _reservaRepository = reservaRepository;
             _imageHelper = imageHelper;
         }
 
         [AllowAnonymous]
-        public IActionResult Index()
+        public async Task<IActionResult> Index(string? pesquisa, int? idCategoria, string? estado)
         {
-            return View(_livroRepository.GetAll().OrderBy(livro => livro.Titulo));
+            if (idCategoria.HasValue && idCategoria.Value <= 0)
+            {
+                idCategoria = null;
+            }
+
+            if (estado != "Disponiveis" && estado != "Emprestados" && estado != "Reservados")
+            {
+                estado = null;
+            }
+
+            // Os prazos vencidos devem ser processados antes de consultar a fila de reservas.
+            if (estado == "Disponiveis" || estado == "Reservados")
+            {
+                await _reservaRepository.AtualizarReservasExpiradasAsync();
+            }
+
+            var categorias = await _categoriaRepository.GetAll()
+                .OrderBy(categoria => categoria.Nome)
+                .ToListAsync();
+
+            ViewBag.Categorias = new SelectList(categorias, "IdCategoria", "Nome", idCategoria);
+            ViewBag.Pesquisa = pesquisa?.Trim();
+            ViewBag.Estado = estado;
+
+            var livros = _livroRepository.PesquisarLivros(pesquisa, idCategoria, estado);
+
+            return View(await livros.OrderBy(livro => livro.Titulo).ToListAsync());
         }
 
         [AllowAnonymous]

@@ -19,6 +19,48 @@ namespace WebBiblioteca.Data
                 .AsNoTracking();
         }
 
+        public IQueryable<Livro> PesquisarLivros(string? pesquisa, int? idCategoria, string? estado)
+        {
+            var livros = GetAll();
+
+            if (!string.IsNullOrWhiteSpace(pesquisa))
+            {
+                string texto = pesquisa.Trim().ToUpper();
+
+                livros = livros.Where(livro =>
+                    (livro.Titulo != null && livro.Titulo.ToUpper().Contains(texto)) ||
+                    (livro.Autor != null && livro.Autor.ToUpper().Contains(texto)) ||
+                    (livro.CategoriaAtual != null && livro.CategoriaAtual.Nome != null &&
+                     livro.CategoriaAtual.Nome.ToUpper().Contains(texto)));
+            }
+
+            if (idCategoria.HasValue && idCategoria.Value > 0)
+            {
+                livros = livros.Where(livro => livro.IdCategoria == idCategoria.Value);
+            }
+
+            if (estado == "Disponiveis")
+            {
+                // As reservas ativas têm prioridade sobre os exemplares na biblioteca.
+                livros = livros.Where(livro => livro.ExemplaresDisponiveis >
+                    _context.Reservas.Count(reserva => reserva.IdLivro == livro.IdLivro && reserva.Ativa));
+            }
+            else if (estado == "Emprestados")
+            {
+                livros = livros.Where(livro => _context.EmprestimoDetalhes.Any(detalhe =>
+                    detalhe.IdLivro == livro.IdLivro &&
+                    detalhe.DataDevolucao == null &&
+                    detalhe.Emprestimo != null && !detalhe.Emprestimo.Eliminado));
+            }
+            else if (estado == "Reservados")
+            {
+                livros = livros.Where(livro => _context.Reservas.Any(reserva =>
+                    reserva.IdLivro == livro.IdLivro && reserva.Ativa));
+            }
+
+            return livros;
+        }
+
         public async Task<Livro?> GetByIdAsync(int id)
         {
             return await _context.Livros
