@@ -104,10 +104,15 @@ namespace WebBiblioteca.Data
                 return false;
             }
 
-            bool leitorExiste = await _context.Leitores
-                .AnyAsync(leitor => leitor.IdLeitor == reserva.IdLeitor);
+            // A regra tem de valer tanto para o MVC como para a Web API.
+            // Fichas antigas sem conta continuam a poder ser usadas pelo funcionário.
+            bool leitorPodeReservar = await _context.Leitores
+                .AnyAsync(leitor => leitor.IdLeitor == reserva.IdLeitor &&
+                    (leitor.UserId == null ||
+                     (leitor.User != null && leitor.User.Aprovado &&
+                      !leitor.User.DeveAlterarPassword && leitor.User.EmailConfirmed)));
 
-            if (!leitorExiste)
+            if (!leitorPodeReservar)
             {
                 return false;
             }

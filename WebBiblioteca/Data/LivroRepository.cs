@@ -6,10 +6,12 @@ namespace WebBiblioteca.Data
     public class LivroRepository : ILivroRepository
     {
         private readonly DataContext _context;
+        private readonly IReservaRepository _reservaRepository;
 
-        public LivroRepository(DataContext context)
+        public LivroRepository(DataContext context, IReservaRepository reservaRepository)
         {
             _context = context;
+            _reservaRepository = reservaRepository;
         }
 
         public IQueryable<Livro> GetAll()
@@ -83,6 +85,10 @@ namespace WebBiblioteca.Data
             livro.CategoriaAtual = null;
 
             _context.Livros.Update(livro);
+
+            // Atualizar as reservas quando os exemplares disponíveis mudam.
+            // O livro, a fila e o histórico são guardados no mesmo SaveChangesAsync.
+            await _reservaRepository.PrepararDisponibilidadeAsync(livro, DateTime.Now);
             await _context.SaveChangesAsync();
         }
 
