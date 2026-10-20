@@ -1,0 +1,158 @@
+﻿@model WebBiblioteca.Models.HistoricoViewModel
+@{
+    ViewData["Title"] = "O meu histórico";
+    var cultura = System.Globalization.CultureInfo.GetCultureInfo("pt-PT");
+}
+
+<h2>O meu histórico</h2>
+<p>
+    <strong>Leitor:</strong> @Model.NomeLeitor
+    @if (!string.IsNullOrWhiteSpace(Model.CodigoLeitor))
+    {
+        <span>(@Model.CodigoLeitor)</span>
+    }
+</p>
+<p>Estão incluídos os empréstimos concluídos ou arquivados e as reservas que continuam registadas.</p>
+
+<h3 class="h4 mt-4">Livros e devoluções</h3>
+@if (!Model.Leituras.Any())
+{
+    <div class="alert alert-info">Ainda não existem empréstimos registados no seu histórico.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Empréstimo</th>
+                    <th>Livro</th>
+                    <th>Data de empréstimo</th>
+                    <th>Prazo de devolução</th>
+                    <th>Devolução efetiva</th>
+                    <th>Estado</th>
+                    <th>Atraso</th>
+                    <th>Multa</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var leitura in Model.Leituras)
+                {
+                    <tr>
+                        <td>
+                            #@leitura.IdEmprestimo
+                            @if (leitura.EmprestimoArquivado)
+                            {
+                                <div><small class="text-muted">Arquivado em @(leitura.DataArquivo?.ToString("dd/MM/yyyy HH:mm") ?? "data não registada")</small></div>
+                            }
+                        </td>
+                        <td>@leitura.TituloLivro<br /><small class="text-muted">@leitura.AutorLivro</small></td>
+                        <td>@leitura.DataEmprestimo.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@leitura.PrazoDevolucao.ToString("dd/MM/yyyy")</td>
+                        <td>@(leitura.DataDevolucao?.ToString("dd/MM/yyyy HH:mm") ?? "Por devolver")</td>
+                        <td>@leitura.Estado</td>
+                        <td>@leitura.DiasAtraso dia(s)</td>
+                        <td>
+                            @if (leitura.ValorPenalizacao.HasValue)
+                            {
+                                <span>@leitura.ValorPenalizacao.Value.ToString("F2", cultura) €</span>
+                                <div><small>@(leitura.PenalizacaoPaga == true ? "Paga" : "Por pagar")</small></div>
+                                @if (leitura.DataPagamento.HasValue)
+                                {
+                                    <small>@leitura.DataPagamento.Value.ToString("dd/MM/yyyy HH:mm")</small>
+                                }
+                            }
+                            else
+                            {
+                                <span>Não registada</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted">Para livros ainda não devolvidos, os dias de atraso são calculados até hoje. A multa apenas aparece depois de ter sido registada na devolução.</p>
+}
+
+<h3 class="h4 mt-4">Alterações aos prazos dos empréstimos</h3>
+@if (!Model.AlteracoesPrazo.Any())
+{
+    <p>Não existem alterações de prazo registadas.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Empréstimo</th><th>Data da alteração</th><th>Prazo anterior</th><th>Novo prazo</th></tr></thead>
+            <tbody>
+                @foreach (var alteracao in Model.AlteracoesPrazo)
+                {
+                    <tr>
+                        <td>#@alteracao.IdEmprestimo</td>
+                        <td>@alteracao.DataAlteracao.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@alteracao.PrazoAnterior.ToString("dd/MM/yyyy")</td>
+                        <td>@alteracao.PrazoNovo.ToString("dd/MM/yyyy")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h3 class="h4 mt-4">Reservas</h3>
+@if (!Model.Reservas.Any())
+{
+    <div class="alert alert-info">Ainda não existem reservas registadas no seu histórico.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Reserva</th><th>Livro</th><th>Data</th><th>Estado</th><th>Posição registada</th><th>Disponível desde</th></tr></thead>
+            <tbody>
+                @foreach (var reserva in Model.Reservas)
+                {
+                    <tr>
+                        <td>#@reserva.IdReserva</td>
+                        <td>@reserva.TituloLivro</td>
+                        <td>@reserva.DataReserva.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@reserva.Estado</td>
+                        <td>@reserva.Ordem</td>
+                        <td>@(reserva.DataDisponivel?.ToString("dd/MM/yyyy HH:mm") ?? "—")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<h3 class="h4 mt-4">Intervenções nas reservas</h3>
+@if (!Model.AlteracoesReservas.Any())
+{
+    <p>Não existem alterações de reservas registadas.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Reserva</th><th>Data</th><th>Ação registada</th><th>Livro anterior</th><th>Livro novo</th><th>Posição anterior</th><th>Posição nova</th></tr></thead>
+            <tbody>
+                @foreach (var alteracao in Model.AlteracoesReservas)
+                {
+                    <tr>
+                        <td>#@alteracao.IdReserva</td>
+                        <td>@alteracao.DataAlteracao.ToString("dd/MM/yyyy HH:mm")</td>
+                        <td>@alteracao.Acao</td>
+                        <td>@alteracao.LivroAnterior</td>
+                        <td>@alteracao.LivroNovo</td>
+                        <td>@alteracao.OrdemAnterior</td>
+                        <td>@alteracao.OrdemNova</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<p class="text-muted mt-3">Este histórico apresenta as informações guardadas na base de dados. Alguns eventos antigos podem não ter uma descrição detalhada.</p>
