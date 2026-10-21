@@ -1,0 +1,132 @@
+@model WebBiblioteca.Models.DashboardFuncionarioViewModel
+@{
+    ViewData["Title"] = "Dashboard do funcionário";
+}
+
+<h2>Dashboard do funcionário</h2>
+<p>Resumo das operações da biblioteca. Os dados são consultados quando abre esta página.</p>
+
+@if (Model.ErroDados != null)
+{
+    <div class="alert alert-danger" role="alert">@Model.ErroDados</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <h3 class="h6">Empréstimos ativos</h3>
+                <p class="display-6">@Model.EmprestimosAtivos</p>
+                <a asp-controller="Emprestimos" asp-action="Index" asp-route-estado="Ativos">Ver empréstimos</a>
+            </div></div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <h3 class="h6">Empréstimos atrasados</h3>
+                <p class="display-6">@Model.EmprestimosAtrasados</p>
+                <a asp-controller="Emprestimos" asp-action="Index" asp-route-estado="Atrasados">Ver atrasos</a>
+            </div></div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <h3 class="h6">Penalizações por pagar</h3>
+                <p class="display-6">@Model.PenalizacoesPorPagar</p>
+                <a asp-controller="Emprestimos" asp-action="Penalizacoes" asp-route-estado="PorPagar">Ver penalizações</a>
+            </div></div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card h-100"><div class="card-body">
+                <h3 class="h6">Reservas ativas</h3>
+                <p class="display-6">@Model.ReservasAtivas</p>
+                <small class="text-muted">Estado guardado na base de dados</small>
+                <div><a asp-controller="Reservas" asp-action="Index">Ver reservas</a></div>
+            </div></div>
+        </div>
+    </div>
+
+    <h3 class="h5">Avisos de trabalho</h3>
+    <ul class="list-group mb-4">
+        @if (Model.EmprestimosAtrasados > 0)
+        {
+            <li class="list-group-item">
+                <strong>@Model.EmprestimosAtrasados empréstimo(s) em atraso.</strong>
+                <a asp-controller="Emprestimos" asp-action="Index" asp-route-estado="Atrasados">Consultar</a>
+            </li>
+        }
+        @if (Model.PenalizacoesPorPagar > 0)
+        {
+            <li class="list-group-item">
+                <strong>@Model.PenalizacoesPorPagar penalização(ões) por pagar.</strong>
+                <a asp-controller="Emprestimos" asp-action="Penalizacoes" asp-route-estado="PorPagar">Consultar</a>
+            </li>
+        }
+        @if (Model.ReservasDisponiveis > 0)
+        {
+            <li class="list-group-item">
+                <strong>@Model.ReservasDisponiveis reserva(s) com livro disponível para levantamento.</strong>
+                <a asp-controller="Reservas" asp-action="Index">Consultar reservas</a>
+            </li>
+        }
+        @if (Model.ReservasComPrazoExpirado > 0)
+        {
+            <li class="list-group-item">
+                <strong>@Model.ReservasComPrazoExpirado reserva(s) com prazo de levantamento ultrapassado.</strong>
+                <span class="text-muted">Ainda constam como ativas; a expiração é processada pelo módulo de reservas.</span>
+                <a asp-controller="Reservas" asp-action="Index">Consultar reservas</a>
+            </li>
+        }
+        @if (Model.LeitoresPendentesAprovacao > 0)
+        {
+            <li class="list-group-item">
+                <strong>@Model.LeitoresPendentesAprovacao conta(s) de leitor por aprovar.</strong>
+                <span class="text-muted">A aprovação é da responsabilidade do administrador.</span>
+            </li>
+        }
+        @if (Model.EmprestimosAtrasados == 0 && Model.PenalizacoesPorPagar == 0 &&
+            Model.ReservasDisponiveis == 0 && Model.ReservasComPrazoExpirado == 0 &&
+            Model.LeitoresPendentesAprovacao == 0)
+        {
+            <li class="list-group-item">Sem avisos de trabalho neste momento.</li>
+        }
+    </ul>
+
+    <h3 class="h5">Aceder aos serviços</h3>
+    <div class="d-flex gap-2 flex-wrap mb-4">
+        <a class="btn btn-outline-primary" asp-controller="Emprestimos" asp-action="Index">Gerir empréstimos e devoluções</a>
+        <a class="btn btn-outline-primary" asp-controller="Emprestimos" asp-action="Penalizacoes">Penalizações e pagamentos</a>
+        <a class="btn btn-outline-primary" asp-controller="Leitores" asp-action="Index">Consultar leitores</a>
+        <a class="btn btn-outline-primary" asp-controller="Reservas" asp-action="Index">Gerir reservas</a>
+    </div>
+
+    <h3 class="h5">Registos recentes de reservas</h3>
+    <p class="text-muted">
+        Eventos guardados na base de dados, incluindo alterações automáticas da fila.
+        Não indicam quem efetuou a ação nem se um funcionário já os leu.
+    </p>
+
+    @if (Model.EventosRecentes.Count == 0)
+    {
+        <div class="alert alert-info">Ainda não existem registos de reservas para apresentar.</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr><th>Data</th><th>Reserva</th><th>Evento</th><th>Descrição</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var evento in Model.EventosRecentes)
+                    {
+                        <tr>
+                            <td class="text-nowrap">@evento.Data.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>#@evento.IdReserva</td>
+                            <td>@evento.Titulo</td>
+                            <td>@evento.Descricao</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}

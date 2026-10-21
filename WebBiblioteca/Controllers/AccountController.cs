@@ -689,6 +689,11 @@ namespace WebBiblioteca.Controllers
         {
             if (User.Identity != null && User.Identity.IsAuthenticated)
             {
+                if (User.IsInRole("Funcionario"))
+                {
+                    return RedirectToAction("Index", "Dashboard");
+                }
+
                 return RedirectToAction("Index", "Home");
             }
 
@@ -711,6 +716,14 @@ namespace WebBiblioteca.Controllers
                     {
                         return Redirect(returnUrl);
                     }
+
+                    var user = await _userHelper.GetUserByEmailAsync(model.Username.Trim());
+
+                    if (user != null && await _userHelper.IsUserInRoleAsync(user, "Funcionario"))
+                    {
+                        return RedirectToAction("Index", "Dashboard");
+                    }
+
                     return RedirectToAction("Index", "Home");
                 }
 
