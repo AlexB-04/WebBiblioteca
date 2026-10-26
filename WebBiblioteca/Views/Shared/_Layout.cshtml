@@ -47,6 +47,26 @@
                                 <a class="nav-link text-dark" asp-controller="Emprestimos" asp-action="Index">Empréstimos</a>
                             </li>
                         }
+                        @if (User.IsInRole("Funcionario"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Dashboard" asp-action="Index">Dashboard</a>
+                            </li>
+                        }
+
+                        @if (User.IsInRole("Leitor"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Historico" asp-action="Index">Histórico</a>
+                            </li>
+                        }
+
+                        @if (User.IsInRole("Funcionario") || User.IsInRole("Leitor"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Reservas" asp-action="Index">Reservas</a>
+                            </li>
+                        }
                         <li class="nav-item">
                             <a class="nav-link text-dark" asp-area="" asp-controller="Livros" asp-action="Index">Livros</a>
                         </li>
