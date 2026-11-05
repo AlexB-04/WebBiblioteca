@@ -5,6 +5,7 @@ namespace WebBiblioteca.Data
     public interface IEmprestimoRepository
     {
         IQueryable<Emprestimo> GetAll(bool incluirEliminados = false);
+        IQueryable<Penalizacao> GetPenalizacoes();
         Task<Emprestimo?> GetByIdAsync(int id, bool incluirEliminados = false);
         Task<string?> ObterErroCriacaoAsync(Emprestimo emprestimo);
         Task<bool> CreateAsync(Emprestimo emprestimo);

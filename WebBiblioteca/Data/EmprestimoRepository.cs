@@ -33,6 +33,14 @@ namespace WebBiblioteca.Data
             return emprestimos;
         }
 
+        public IQueryable<Penalizacao> GetPenalizacoes()
+        {
+            return _context.Penalizacoes
+                .Include(penalizacao => penalizacao.Emprestimo)
+                .ThenInclude(emprestimo => emprestimo!.Leitor)
+                .AsNoTracking();
+        }
+
         public async Task<Emprestimo?> GetByIdAsync(int id, bool incluirEliminados = false)
         {
             return await GetAll(incluirEliminados)
@@ -47,8 +55,8 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> LeitorExisteAsync(int id)
         {
-            return await _context.Leitores.
-                AnyAsync(leitor => leitor.IdLeitor == id);
+            return await _context.Leitores
+                .AnyAsync(leitor => leitor.IdLeitor == id);
         }
 
         public async Task<bool> TemEmprestimosEmAtrasoAsync(int idLeitor)
@@ -89,49 +97,84 @@ namespace WebBiblioteca.Data
         public async Task<string?> ObterErroCriacaoAsync(Emprestimo emprestimo)
         {
             if (emprestimo == null || emprestimo.IdLeitor <= 0)
+            {
                 return "Selecione um leitor válido.";
+            }
             if (emprestimo.Detalhes == null || emprestimo.Detalhes.Count == 0)
+            {
                 return "Selecione pelo menos um livro.";
+            }
 
             var leitor = await _context.Leitores.Include(leitor => leitor.User).AsNoTracking()
                 .FirstOrDefaultAsync(leitor => leitor.IdLeitor == emprestimo.IdLeitor);
-            if (leitor == null) return "O leitor indicado não existe.";
+            if (leitor == null)
+            {
+                return "O leitor indicado não existe.";
+            }
             // Conservar fichas antigas sem conta. Uma conta associada tem de estar ativa.
             if (leitor.UserId != null && (leitor.User == null || !leitor.User.Aprovado ||
                 leitor.User.DeveAlterarPassword || !leitor.User.EmailConfirmed))
+            {
                 return "A conta do leitor aguarda confirmação do administrador ou definição da palavra-passe.";
+            }
             if (leitor.BloqueadoAte.HasValue && leitor.BloqueadoAte.Value > DateTime.Now)
+            {
                 return "O leitor está temporariamente bloqueado até " + leitor.BloqueadoAte.Value.ToString("dd/MM/yyyy HH:mm") + ".";
+            }
             if (EmprestimoRegras.ObterDias(leitor.TipoUtilizador) == 0)
+            {
                 return "O tipo de utilizador do leitor é inválido.";
+            }
             if (await TemEmprestimosEmAtrasoAsync(leitor.IdLeitor))
+            {
                 return "O leitor possui livros com devolução em atraso.";
+            }
             if (await TemPenalizacoesPorPagarAsync(leitor.IdLeitor))
+            {
                 return "O leitor possui penalizações por pagar.";
+            }
 
             var idsLivros = new List<int>();
             foreach (var detalhe in emprestimo.Detalhes)
             {
                 if (detalhe == null || detalhe.IdLivro <= 0)
+                {
                     return "Selecione livros válidos.";
+                }
                 if (idsLivros.Contains(detalhe.IdLivro))
+                {
                     return "O mesmo livro não pode aparecer duas vezes no empréstimo.";
+                }
                 idsLivros.Add(detalhe.IdLivro);
             }
             int emprestados = await ContarLivrosEmprestadosAsync(leitor.IdLeitor);
             if (emprestados + idsLivros.Count > leitor.LimiteEmprestimos)
+            {
                 return $"O leitor tem {emprestados} livro(s) por devolver e um limite de {leitor.LimiteEmprestimos}. A seleção ultrapassa esse limite.";
+            }
+
+            var livros = await _context.Livros.AsNoTracking().Where(livro => idsLivros.Contains(livro.IdLivro)).ToListAsync();
 
             foreach (int idLivro in idsLivros.OrderBy(id => id))
             {
-                var livro = await _context.Livros.AsNoTracking().FirstOrDefaultAsync(livro => livro.IdLivro == idLivro);
-                if (livro == null) return "Um dos livros selecionados já não existe.";
+                var livro = livros.FirstOrDefault(livro => livro.IdLivro == idLivro);
+
+                if (livro == null)
+                {
+                    return "Um dos livros selecionados já não existe.";
+                }
                 if (await TemLivroEmprestadoAsync(leitor.IdLeitor, idLivro))
+                {
                     return $"O leitor já tem o livro «{livro.Titulo}» por devolver.";
+                }
                 if (livro.ExemplaresDisponiveis <= 0)
+                {
                     return $"O livro «{livro.Titulo}» não tem exemplares disponíveis.";
+                }
                 if (!await _reservaRepository.PodeEmprestarAsync(leitor.IdLeitor, idLivro))
+                {
                     return $"Os exemplares de «{livro.Titulo}» estão destinados a outros leitores na fila de reservas.";
+                }
             }
             return null;
         }
@@ -142,7 +185,10 @@ namespace WebBiblioteca.Data
             // Serializable impede que dois pedidos usem o mesmo último exemplar.
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             await _reservaRepository.AtualizarReservasExpiradasAsync();
-            if (await ObterErroCriacaoAsync(emprestimo) != null) return false;
+            if (await ObterErroCriacaoAsync(emprestimo) != null)
+            {
+                return false;
+            }
 
             var leitor = await _context.Leitores.AsNoTracking()
                 .FirstAsync(leitor => leitor.IdLeitor == emprestimo.IdLeitor);

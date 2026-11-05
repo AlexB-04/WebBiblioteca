@@ -58,35 +58,30 @@ namespace WebBiblioteca.Controllers
                             d.Livro.Titulo.ToUpper().Contains(texto)));
                 }
 
-                if (estado == "Eliminados")
-                {
-                    emprestimos = emprestimos.Where(e => e.Eliminado);
-                }
-                else
-                {
-                    emprestimos = emprestimos.Where(e => !e.Eliminado);
+                bool mostrarEliminados = estado == "Eliminados";
 
-                    if (estado == "Ativos")
+                emprestimos = emprestimos.Where(e => e.Eliminado == mostrarEliminados);
+
+                if (estado == "Ativos" || estado == "Atrasados")
+                {
+                    emprestimos = emprestimos.Where(e =>
+                        e.Detalhes.Any(d => d.DataDevolucao == null));
+
+                    if (estado == "Atrasados")
                     {
                         emprestimos = emprestimos.Where(e =>
-                            e.Detalhes.Any(d => d.DataDevolucao == null));
+                            e.PrazoDevolucao < DateTime.Today);
                     }
-                    else if (estado == "Atrasados")
-                    {
-                        emprestimos = emprestimos.Where(e =>
-                            e.PrazoDevolucao < DateTime.Today &&
-                            e.Detalhes.Any(d => d.DataDevolucao == null));
-                    }
-                    else if (estado == "Concluidos")
-                    {
-                        emprestimos = emprestimos.Where(e =>
-                            e.Detalhes.All(d => d.DataDevolucao != null));
-                    }
-                    else if (estado == "PorPagar")
-                    {
-                        emprestimos = emprestimos.Where(e =>
-                            e.Penalizacoes.Any(p => !p.Pago));
-                    }
+                }
+                else if (estado == "Concluidos")
+                {
+                    emprestimos = emprestimos.Where(e =>
+                        e.Detalhes.All(d => d.DataDevolucao != null));
+                }
+                else if (estado == "PorPagar")
+                {
+                    emprestimos = emprestimos.Where(e =>
+                        e.Penalizacoes.Any(p => !p.Pago));
                 }
 
                 ViewBag.Pesquisa = pesquisa;
@@ -180,11 +175,7 @@ namespace WebBiblioteca.Controllers
 
                     string? erro = await _emprestimoRepository.ObterErroCriacaoAsync(emprestimo);
 
-                    if (erro != null)
-                    {
-                        ModelState.AddModelError(string.Empty, erro);
-                    }
-                    else
+                    if (erro == null)
                     {
                         bool criado = await _emprestimoRepository.CreateAsync(emprestimo);
 
@@ -193,13 +184,11 @@ namespace WebBiblioteca.Controllers
                             TempData["EmprestimoMessage"] = "Empréstimo registado. Os exemplares foram descontados e os levantamentos das reservas foram registados.";
                             return RedirectToAction("Details", new { id = emprestimo.IdEmprestimo });
                         }
-                        else
-                        {
-                            ModelState.AddModelError(
-                                string.Empty,
-                                "Os dados foram alterados. Verifique o leitor, o limite e os exemplares disponíveis e tente novamente.");
-                        }
+
+                        erro = "Os dados foram alterados. Verifique o leitor, o limite e os exemplares disponíveis e tente novamente.";
                     }
+
+                    ModelState.AddModelError(string.Empty, erro);
                 }
 
                 await PreencherListasAsync(model);
@@ -219,9 +208,9 @@ namespace WebBiblioteca.Controllers
         {
             try
             {
-                var emprestimo = await _emprestimoRepository.GetByIdAsync(id);
+                var emprestimoExistente = await _emprestimoRepository.GetByIdAsync(id);
 
-                if (emprestimo == null)
+                if (emprestimoExistente == null)
                 {
                     return NaoEncontrado();
                 }
@@ -229,8 +218,8 @@ namespace WebBiblioteca.Controllers
                 var model = new PrazoEmprestimoViewModel
                 {
                     IdEmprestimo = id,
-                    PrazoDevolucao = emprestimo.PrazoDevolucao,
-                    Emprestimo = emprestimo
+                    PrazoDevolucao = emprestimoExistente.PrazoDevolucao,
+                    Emprestimo = emprestimoExistente
                 };
 
                 return View(model);
@@ -267,12 +256,12 @@ namespace WebBiblioteca.Controllers
 
                 if (ModelState.IsValid && model.PrazoDevolucao.HasValue)
                 {
-                    bool alterado = await _emprestimoRepository.AlterarPrazoAsync(
-                        id, model.PrazoDevolucao.Value);
+                    bool prazoAceite = await _emprestimoRepository
+                        .AlterarPrazoAsync(id, model.PrazoDevolucao.Value);
 
-                    if (alterado)
+                    if (prazoAceite)
                     {
-                        TempData["EmprestimoMessage"] = "Prazo guardado. As alterações ficam registadas no histórico.";
+                        TempData["EmprestimoMessage"] = "Prazo confirmado. As alterações de prazo ficam registadas no histórico.";
                         return RedirectToAction("Details", new { id });
                     }
 
@@ -293,16 +282,19 @@ namespace WebBiblioteca.Controllers
             }
         }
 
+        [HttpGet]
         public Task<IActionResult> Devolver(int id, int idLivro)
         {
             return ConfirmarAsync(id, "Devolver", idLivro, 0);
         }
 
+        [HttpGet]
         public Task<IActionResult> Pagar(int id, int idPenalizacao)
         {
             return ConfirmarAsync(id, "Pagar", 0, idPenalizacao);
         }
 
+        [HttpGet]
         public Task<IActionResult> Delete(int id)
         {
             return ConfirmarAsync(id, "Delete", 0, 0);
@@ -399,11 +391,7 @@ namespace WebBiblioteca.Controllers
         {
             try
             {
-                var emprestimos = await _emprestimoRepository.GetAll(true)
-                    .Where(e => e.Penalizacoes.Any())
-                    .ToListAsync();
-
-                var penalizacoes = emprestimos.SelectMany(e => e.Penalizacoes);
+                var penalizacoes = _emprestimoRepository.GetPenalizacoes();
 
                 if (estado == "Pagas")
                 {
@@ -416,9 +404,9 @@ namespace WebBiblioteca.Controllers
 
                 ViewBag.Estado = estado;
 
-                var lista = penalizacoes
+                var lista = await penalizacoes
                     .OrderByDescending(p => p.DataPenalizacao)
-                    .ToList();
+                    .ToListAsync();
 
                 return View(lista);
             }
@@ -505,7 +493,7 @@ namespace WebBiblioteca.Controllers
                         model.Erro = "Esta penalização já foi paga.";
                     }
                 }
-                else
+                else if (acao == "Delete")
                 {
                     model.Titulo = "Eliminar empréstimo";
                     model.Mensagem = "Eliminar da lista corrente? As devoluções, penalizações e alterações continuam no histórico. Os exemplares não serão alterados.";
@@ -518,6 +506,10 @@ namespace WebBiblioteca.Controllers
                     {
                         model.Erro = "Existem penalizações por pagar.";
                     }
+                }
+                else
+                {
+                    return BadRequest();
                 }
 
                 if (emprestimo.Eliminado)
