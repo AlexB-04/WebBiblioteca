@@ -41,47 +41,7 @@ namespace WebBiblioteca.Controllers.API
                     .OrderByDescending(emprestimo => emprestimo.DataEmprestimo)
                     .ToListAsync();
 
-                return Ok(emprestimos.Select(emprestimo => new
-                {
-                    emprestimo.IdEmprestimo,
-                    emprestimo.IdLeitor,
-                    Leitor = emprestimo.Leitor == null ? null : emprestimo.Leitor.Nome,
-                    emprestimo.DataEmprestimo,
-                    emprestimo.PrazoDevolucao,
-                    emprestimo.Eliminado,
-                    emprestimo.DataEliminacao,
-                    Alteracoes = emprestimo.Alteracoes
-                        .OrderBy(alteracao => alteracao.IdEmprestimoAlteracao)
-                        .Select(alteracao => new
-                        {
-                            alteracao.IdEmprestimoAlteracao,
-                            alteracao.DataAlteracao,
-                            alteracao.PrazoAnterior,
-                            alteracao.PrazoNovo
-                        }).ToList(),
-                    Penalizacoes = emprestimo.Penalizacoes
-                        .OrderBy(penalizacao => penalizacao.IdPenalizacao)
-                        .Select(penalizacao => new
-                        {
-                            penalizacao.IdPenalizacao,
-                            penalizacao.IdEmprestimoDetalhe,
-                            penalizacao.DiasAtraso,
-                            penalizacao.Valor,
-                            penalizacao.Motivo,
-                            penalizacao.DataPenalizacao,
-                            penalizacao.Pago,
-                            penalizacao.DataPagamento
-                        }).ToList(),
-                    Detalhes = emprestimo.Detalhes
-                        .OrderBy(detalhe => detalhe.IdEmprestimoDetalhe)
-                        .Select(detalhe => new
-                        {
-                            detalhe.IdEmprestimoDetalhe,
-                            detalhe.IdLivro,
-                            Livro = detalhe.Livro == null ? null : detalhe.Livro.Titulo,
-                            detalhe.DataDevolucao
-                        }).ToList()
-                }).ToList());
+                return Ok(emprestimos.Select(emprestimo => CriarRespostaEmprestimo(emprestimo)).ToList());
             }
 
             var emprestimoEncontrado = await _emprestimoRepository.GetByIdAsync(id.Value, incluirEliminados);
@@ -92,58 +52,26 @@ namespace WebBiblioteca.Controllers.API
                 return NotFound();
             }
 
-            return Ok(new
-            {
-                emprestimoEncontrado.IdEmprestimo,
-                emprestimoEncontrado.IdLeitor,
-                Leitor = emprestimoEncontrado.Leitor == null ? null : emprestimoEncontrado.Leitor.Nome,
-                emprestimoEncontrado.DataEmprestimo,
-                emprestimoEncontrado.PrazoDevolucao,
-                emprestimoEncontrado.Eliminado,
-                emprestimoEncontrado.DataEliminacao,
-                Alteracoes = emprestimoEncontrado.Alteracoes
-                    .OrderBy(alteracao => alteracao.IdEmprestimoAlteracao)
-                    .Select(alteracao => new
-                    {
-                        alteracao.IdEmprestimoAlteracao,
-                        alteracao.DataAlteracao,
-                        alteracao.PrazoAnterior,
-                        alteracao.PrazoNovo
-                    }).ToList(),
-                Penalizacoes = emprestimoEncontrado.Penalizacoes
-                    .OrderBy(penalizacao => penalizacao.IdPenalizacao)
-                    .Select(penalizacao => new
-                    {
-                        penalizacao.IdPenalizacao,
-                        penalizacao.IdEmprestimoDetalhe,
-                        penalizacao.DiasAtraso,
-                        penalizacao.Valor,
-                        penalizacao.Motivo,
-                        penalizacao.DataPenalizacao,
-                        penalizacao.Pago,
-                        penalizacao.DataPagamento
-                    }).ToList(),
-                Detalhes = emprestimoEncontrado.Detalhes
-                    .OrderBy(detalhe => detalhe.IdEmprestimoDetalhe)
-                    .Select(detalhe => new
-                    {
-                        detalhe.IdEmprestimoDetalhe,
-                        detalhe.IdLivro,
-                        Livro = detalhe.Livro == null ? null : detalhe.Livro.Titulo,
-                        detalhe.DataDevolucao
-                    }).ToList()
-            });
+            return Ok(CriarRespostaEmprestimo(emprestimoEncontrado));
+        }
+
+        public class AlterarPrazoRequest
+        {
+            public DateTime? PrazoDevolucao { get; set; }
         }
 
         [HttpPut]
         [ValidateAntiForgeryToken]
         [Route("{id}/prazo")]
-        public async Task<IActionResult> AlterarPrazo(int id, [FromBody] Emprestimo dados)
+        public async Task<IActionResult> AlterarPrazo(int id, [FromBody] AlterarPrazoRequest? dados)
         {
-            if (dados == null || dados.PrazoDevolucao == default)
+            if (dados == null || dados.PrazoDevolucao == null ||
+                dados.PrazoDevolucao.Value == default)
             {
                 return BadRequest("Indique um prazo de devolução válido.");
             }
+
+            DateTime novoPrazo = dados.PrazoDevolucao.Value;
 
             var emprestimo = await _emprestimoRepository.GetByIdAsync(id);
 
@@ -162,14 +90,14 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("Não é possível alterar o prazo de um empréstimo em atraso.");
             }
 
-            if (dados.PrazoDevolucao.Date < DateTime.Today)
+            if (novoPrazo.Date < DateTime.Today)
             {
                 return BadRequest("O novo prazo não pode ser anterior ao dia de hoje.");
             }
 
             try
             {
-                bool alterado = await _emprestimoRepository.AlterarPrazoAsync(id, dados.PrazoDevolucao);
+                bool alterado = await _emprestimoRepository.AlterarPrazoAsync(id, novoPrazo);
 
                 if (!alterado)
                 {
@@ -270,47 +198,7 @@ namespace WebBiblioteca.Controllers.API
                 return NotFound();
             }
 
-            return Ok(new
-            {
-                emprestimoCriado.IdEmprestimo,
-                emprestimoCriado.IdLeitor,
-                Leitor = emprestimoCriado.Leitor == null ? null : emprestimoCriado.Leitor.Nome,
-                emprestimoCriado.DataEmprestimo,
-                emprestimoCriado.PrazoDevolucao,
-                emprestimoCriado.Eliminado,
-                emprestimoCriado.DataEliminacao,
-                Alteracoes = emprestimoCriado.Alteracoes
-                    .OrderBy(alteracao => alteracao.IdEmprestimoAlteracao)
-                    .Select(alteracao => new
-                    {
-                        alteracao.IdEmprestimoAlteracao,
-                        alteracao.DataAlteracao,
-                        alteracao.PrazoAnterior,
-                        alteracao.PrazoNovo
-                    }).ToList(),
-                Penalizacoes = emprestimoCriado.Penalizacoes
-                    .OrderBy(penalizacao => penalizacao.IdPenalizacao)
-                    .Select(penalizacao => new
-                    {
-                        penalizacao.IdPenalizacao,
-                        penalizacao.IdEmprestimoDetalhe,
-                        penalizacao.DiasAtraso,
-                        penalizacao.Valor,
-                        penalizacao.Motivo,
-                        penalizacao.DataPenalizacao,
-                        penalizacao.Pago,
-                        penalizacao.DataPagamento
-                    }).ToList(),
-                Detalhes = emprestimoCriado.Detalhes
-                    .OrderBy(detalhe => detalhe.IdEmprestimoDetalhe)
-                    .Select(detalhe => new
-                    {
-                        detalhe.IdEmprestimoDetalhe,
-                        detalhe.IdLivro,
-                        Livro = detalhe.Livro == null ? null : detalhe.Livro.Titulo,
-                        detalhe.DataDevolucao
-                    }).ToList()
-            });
+            return Ok(CriarRespostaEmprestimo(emprestimoCriado));
         }
 
         [HttpPut]
@@ -373,47 +261,7 @@ namespace WebBiblioteca.Controllers.API
                 return NotFound();
             }
 
-            return Ok(new
-            {
-                emprestimoAtualizado.IdEmprestimo,
-                emprestimoAtualizado.IdLeitor,
-                Leitor = emprestimoAtualizado.Leitor == null ? null : emprestimoAtualizado.Leitor.Nome,
-                emprestimoAtualizado.DataEmprestimo,
-                emprestimoAtualizado.PrazoDevolucao,
-                emprestimoAtualizado.Eliminado,
-                emprestimoAtualizado.DataEliminacao,
-                Alteracoes = emprestimoAtualizado.Alteracoes
-                    .OrderBy(alteracao => alteracao.IdEmprestimoAlteracao)
-                    .Select(alteracao => new
-                    {
-                        alteracao.IdEmprestimoAlteracao,
-                        alteracao.DataAlteracao,
-                        alteracao.PrazoAnterior,
-                        alteracao.PrazoNovo
-                    }).ToList(),
-                Penalizacoes = emprestimoAtualizado.Penalizacoes
-                    .OrderBy(penalizacao => penalizacao.IdPenalizacao)
-                    .Select(penalizacao => new
-                    {
-                        penalizacao.IdPenalizacao,
-                        penalizacao.IdEmprestimoDetalhe,
-                        penalizacao.DiasAtraso,
-                        penalizacao.Valor,
-                        penalizacao.Motivo,
-                        penalizacao.DataPenalizacao,
-                        penalizacao.Pago,
-                        penalizacao.DataPagamento
-                    }).ToList(),
-                Detalhes = emprestimoAtualizado.Detalhes
-                    .OrderBy(detalheDaLista => detalheDaLista.IdEmprestimoDetalhe)
-                    .Select(detalheDaLista => new
-                    {
-                        detalheDaLista.IdEmprestimoDetalhe,
-                        detalheDaLista.IdLivro,
-                        Livro = detalheDaLista.Livro == null ? null : detalheDaLista.Livro.Titulo,
-                        detalheDaLista.DataDevolucao
-                    }).ToList()
-            });
+            return Ok(CriarRespostaEmprestimo(emprestimoAtualizado));
         }
 
         [HttpDelete]
@@ -457,6 +305,52 @@ namespace WebBiblioteca.Controllers.API
             }
 
             return Ok();
+        }
+
+        // É mesmo formato de resposta, usado pelo GET, POST e PUT.
+        private static object CriarRespostaEmprestimo(Emprestimo emprestimo)
+        {
+            return new
+            {
+                emprestimo.IdEmprestimo,
+                emprestimo.IdLeitor,
+                Leitor = emprestimo.Leitor == null ? null : emprestimo.Leitor.Nome,
+                emprestimo.DataEmprestimo,
+                emprestimo.PrazoDevolucao,
+                emprestimo.Eliminado,
+                emprestimo.DataEliminacao,
+                Alteracoes = emprestimo.Alteracoes
+                    .OrderBy(alteracao => alteracao.IdEmprestimoAlteracao)
+                    .Select(alteracao => new
+                    {
+                        alteracao.IdEmprestimoAlteracao,
+                        alteracao.DataAlteracao,
+                        alteracao.PrazoAnterior,
+                        alteracao.PrazoNovo
+                    }).ToList(),
+                Penalizacoes = emprestimo.Penalizacoes
+                    .OrderBy(penalizacao => penalizacao.IdPenalizacao)
+                    .Select(penalizacao => new
+                    {
+                        penalizacao.IdPenalizacao,
+                        penalizacao.IdEmprestimoDetalhe,
+                        penalizacao.DiasAtraso,
+                        penalizacao.Valor,
+                        penalizacao.Motivo,
+                        penalizacao.DataPenalizacao,
+                        penalizacao.Pago,
+                        penalizacao.DataPagamento
+                    }).ToList(),
+                Detalhes = emprestimo.Detalhes
+                    .OrderBy(detalhe => detalhe.IdEmprestimoDetalhe)
+                    .Select(detalhe => new
+                    {
+                        detalhe.IdEmprestimoDetalhe,
+                        detalhe.IdLivro,
+                        Livro = detalhe.Livro == null ? null : detalhe.Livro.Titulo,
+                        detalhe.DataDevolucao
+                    }).ToList()
+            };
         }
     }
 }

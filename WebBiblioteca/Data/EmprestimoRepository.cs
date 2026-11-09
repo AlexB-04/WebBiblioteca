@@ -153,7 +153,10 @@ namespace WebBiblioteca.Data
                 return $"O leitor tem {emprestados} livro(s) por devolver e um limite de {leitor.LimiteEmprestimos}. A seleção ultrapassa esse limite.";
             }
 
-            var livros = await _context.Livros.AsNoTracking().Where(livro => idsLivros.Contains(livro.IdLivro)).ToListAsync();
+            var livros = await _context.Livros
+                .AsNoTracking()
+                .Where(livro => idsLivros.Contains(livro.IdLivro))
+                .ToListAsync();
 
             foreach (int idLivro in idsLivros.OrderBy(id => id))
             {
@@ -184,19 +187,29 @@ namespace WebBiblioteca.Data
             // A leitura das regras e a escrita do stock pertencem à mesma operação.
             // Serializable impede que dois pedidos usem o mesmo último exemplar.
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
             await _reservaRepository.AtualizarReservasExpiradasAsync();
-            if (await ObterErroCriacaoAsync(emprestimo) != null)
+
+            string? erro = await ObterErroCriacaoAsync(emprestimo);
+
+            if (erro != null)
             {
                 return false;
             }
 
             var leitor = await _context.Leitores.AsNoTracking()
                 .FirstAsync(leitor => leitor.IdLeitor == emprestimo.IdLeitor);
+
             DateTime agora = DateTime.Now;
+
             int diasEmprestimo = EmprestimoRegras.ObterDias(leitor.TipoUtilizador);
+
             var idsLivros = emprestimo.Detalhes.Select(detalhe => detalhe.IdLivro).ToList();
-            var livros = await _context.Livros.Where(livro => idsLivros.Contains(livro.IdLivro))
-                .OrderBy(livro => livro.IdLivro).ToListAsync();
+
+            var livros = await _context.Livros
+                .Where(livro => idsLivros.Contains(livro.IdLivro))
+                .OrderBy(livro => livro.IdLivro)
+                .ToListAsync();
 
             var novoEmprestimo = new Emprestimo
             {
@@ -231,13 +244,14 @@ namespace WebBiblioteca.Data
 
         public async Task<bool> DevolverLivroAsync(int idEmprestimo, int idLivro)
         {
-            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-            await _reservaRepository.AtualizarReservasExpiradasAsync();
-
             if (idEmprestimo <= 0 || idLivro <= 0)
             {
                 return false;
             }
+
+            await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            await _reservaRepository.AtualizarReservasExpiradasAsync();
 
             var detalhe = await _context.EmprestimoDetalhes
                 .Include(detalheDaLista => detalheDaLista.Livro)
@@ -246,8 +260,11 @@ namespace WebBiblioteca.Data
                     detalheDaLista.IdEmprestimo == idEmprestimo &&
                     detalheDaLista.IdLivro == idLivro);
 
-            if (detalhe == null || detalhe.DataDevolucao != null || detalhe.Livro == null ||
-                detalhe.Emprestimo == null || detalhe.Emprestimo.Eliminado)
+            if (detalhe == null ||
+                detalhe.DataDevolucao != null ||
+                detalhe.Livro == null ||
+                detalhe.Emprestimo == null ||
+                detalhe.Emprestimo.Eliminado)
             {
                 return false;
             }
@@ -335,7 +352,8 @@ namespace WebBiblioteca.Data
             int diasEmprestimo = EmprestimoRegras.ObterDias(emprestimo.Leitor.TipoUtilizador);
             DateTime novoPrazo = prazoDevolucao.Date;
 
-            if (diasEmprestimo == 0 || novoPrazo < DateTime.Today ||
+            if (diasEmprestimo == 0 ||
+                novoPrazo < DateTime.Today ||
                 novoPrazo < emprestimo.DataEmprestimo.Date ||
                 novoPrazo > emprestimo.DataEmprestimo.Date.AddDays(diasEmprestimo))
             {
@@ -415,6 +433,5 @@ namespace WebBiblioteca.Data
 
             return true;
         }
-
     }
 }
