@@ -11,7 +11,7 @@ namespace WebBiblioteca.Controllers.API
     [Authorize(Roles = "Admin")]
     public class CategoriasController : Controller
     {
-        private ICategoriaRepository _categoriaRepository;
+        private readonly ICategoriaRepository _categoriaRepository;
 
         public CategoriasController(ICategoriaRepository categoriaRepository)
         {
@@ -24,7 +24,9 @@ namespace WebBiblioteca.Controllers.API
         {
             if (id == null)
             {
-                return Ok(_categoriaRepository.GetAll());
+                var categorias = await _categoriaRepository.GetAll().ToListAsync();
+
+                return Ok(categorias);
             }
 
             var categoria = await _categoriaRepository.GetByIdAsync(id.Value);
@@ -46,26 +48,30 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("Dados da categoria inválidos.");
             }
 
-            if (string.IsNullOrWhiteSpace(categoria.Nome))
+            string? erroNome = await ValidarNomeCategoriaAsync(categoria);
+
+            if (erroNome != null)
             {
-                return BadRequest("O nome da categoria é obrigatório.");
+                return BadRequest(erroNome);
             }
 
-            bool categoriaJaExiste = _categoriaRepository.GetAll().Any(outraCategoria => outraCategoria.Nome == categoria.Nome);
+            categoria.IdCategoria = 0;
 
-            if (categoriaJaExiste)
+            try
             {
-                return BadRequest("Já existe uma categoria com esse nome.");
+                await _categoriaRepository.CreateAsync(categoria);
+
+                return Ok(new
+                {
+                    categoria.IdCategoria,
+                    categoria.Nome,
+                    categoria.Descricao
+                });
             }
-
-            await _categoriaRepository.CreateAsync(categoria);
-
-            return Ok(new
+            catch (DbUpdateException)
             {
-                categoria.IdCategoria,
-                categoria.Nome,
-                categoria.Descricao
-            });
+                return StatusCode(500, "Não foi possível criar a categoria. Tente novamente.");
+            }
         }
 
         [HttpPut]
@@ -77,11 +83,6 @@ namespace WebBiblioteca.Controllers.API
                 return BadRequest("Dados da categoria inválidos.");
             }
 
-            if (string.IsNullOrWhiteSpace(categoria.Nome))
-            {
-                return BadRequest("O nome da categoria é obrigatório.");
-            }
-
             var categoriaExistente = await _categoriaRepository.GetByIdAsync(id);
 
             if (categoriaExistente == null)
@@ -89,19 +90,26 @@ namespace WebBiblioteca.Controllers.API
                 return NotFound();
             }
 
-            bool categoriaJaExiste = _categoriaRepository.GetAll().Any(outraCategoria => outraCategoria.Nome == categoria.Nome && outraCategoria.IdCategoria != id);
+            string? erroNome = await ValidarNomeCategoriaAsync(categoria, id);
 
-            if (categoriaJaExiste)
+            if (erroNome != null)
             {
-                return BadRequest("Já existe outra categoria com esse nome.");
+                return BadRequest(erroNome);
             }
 
             categoriaExistente.Nome = categoria.Nome;
             categoriaExistente.Descricao = categoria.Descricao;
 
-            await _categoriaRepository.UpdateAsync(categoriaExistente);
+            try
+            {
+                await _categoriaRepository.UpdateAsync(categoriaExistente);
 
-            return Ok(categoriaExistente);
+                return Ok(categoriaExistente);
+            }
+            catch (DbUpdateException)
+            {
+                return StatusCode(500, "Não foi possível atualizar a categoria. Tente novamente.");
+            }
         }
 
         [HttpDelete]
@@ -132,6 +140,35 @@ namespace WebBiblioteca.Controllers.API
             }
 
             return Ok();
+        }
+
+        private async Task<string?> ValidarNomeCategoriaAsync(Categoria categoria, int? idCategoriaAtual = null)
+        {
+            if (string.IsNullOrWhiteSpace(categoria.Nome))
+            {
+                return "O nome da categoria é obrigatório.";
+            }
+
+            categoria.Nome = categoria.Nome.Trim();
+
+            IQueryable<Categoria> categorias = _categoriaRepository.GetAll();
+
+            if (idCategoriaAtual != null)
+            {
+                int id = idCategoriaAtual.Value;
+
+                categorias = categorias.Where(outraCategoria => outraCategoria.IdCategoria != id);
+            }
+
+            bool categoriaJaExiste = await categorias.AnyAsync(
+                outraCategoria => outraCategoria.Nome == categoria.Nome);
+
+            if (categoriaJaExiste)
+            {
+                return "Já existe uma categoria com esse nome.";
+            }
+
+            return null;
         }
     }
 }

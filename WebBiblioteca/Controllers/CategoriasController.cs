@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Linq;
 using WebBiblioteca.Data;
 
 namespace WebBiblioteca.Controllers
@@ -31,30 +30,27 @@ namespace WebBiblioteca.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Categoria categoria)
         {
-            if (string.IsNullOrWhiteSpace(categoria.Nome))
-            {
-                ModelState.AddModelError("Nome", "O nome da categoria é obrigatório.");
-            }
-            else
-            {
-                bool categoriaJaExiste = _categoriaRepository.GetAll().Any(outraCategoria => outraCategoria.Nome == categoria.Nome);
+            await ValidarNomeCategoriaAsync(categoria);
 
-                if (categoriaJaExiste)
-                {
-                    ModelState.AddModelError("Nome", "Já existe uma categoria com esse nome.");
-                }
+            if (!ModelState.IsValid)
+            {
+                return View(categoria);
             }
 
-            if (ModelState.IsValid)
-            {
-                categoria.IdCategoria = 0;
+            categoria.IdCategoria = 0;
 
+            try
+            {
                 await _categoriaRepository.CreateAsync(categoria);
 
                 return RedirectToAction("Index");
             }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Não foi possível guardar a categoria. Tente novamente.");
 
-            return View(categoria);
+                return View(categoria);
+            }
         }
 
         public async Task<IActionResult> Edit(int? id)
@@ -86,34 +82,28 @@ namespace WebBiblioteca.Controllers
                 return NotFound();
             }
 
-            if (string.IsNullOrWhiteSpace(categoria.Nome))
-            {
-                ModelState.AddModelError("Nome", "O nome da categoria é obrigatório.");
-            }
-            else
-            {
-                bool categoriaJaExiste = _categoriaRepository.GetAll()
-                 .Any(outraCategoria =>
-                     outraCategoria.Nome == categoria.Nome &&
-                     outraCategoria.IdCategoria != categoria.IdCategoria);
+            await ValidarNomeCategoriaAsync(categoria, categoria.IdCategoria);
 
-                if (categoriaJaExiste)
-                {
-                    ModelState.AddModelError("Nome", "Já existe outra categoria com esse nome.");
-                }
+            if (!ModelState.IsValid)
+            {
+                return View(categoria);
             }
 
-            if (ModelState.IsValid)
-            {
-                categoriaExistente.Nome = categoria.Nome;
-                categoriaExistente.Descricao = categoria.Descricao;
+            categoriaExistente.Nome = categoria.Nome;
+            categoriaExistente.Descricao = categoria.Descricao;
 
+            try
+            {
                 await _categoriaRepository.UpdateAsync(categoriaExistente);
 
                 return RedirectToAction("Index");
             }
+            catch (DbUpdateException)
+            {
+                ModelState.AddModelError(string.Empty, "Não foi possível atualizar a categoria. Tente novamente.");
 
-            return View(categoria);
+                return View(categoria);
+            }
         }
 
         public async Task<IActionResult> Delete(int? id)
@@ -164,6 +154,35 @@ namespace WebBiblioteca.Controllers
                 ModelState.AddModelError(string.Empty, "Não foi possível eliminar a categoria. Verifique os dados associados.");
 
                 return View("Delete", categoria);
+            }
+        }
+
+        private async Task ValidarNomeCategoriaAsync(Categoria categoria, int? idCategoriaAtual = null)
+        {
+            if (string.IsNullOrWhiteSpace(categoria.Nome))
+            {
+                ModelState.AddModelError("Nome", "O nome da categoria é obrigatório.");
+
+                return;
+            }
+
+            categoria.Nome = categoria.Nome.Trim();
+
+            IQueryable<Categoria> categorias = _categoriaRepository.GetAll();
+
+            if (idCategoriaAtual != null)
+            {
+                int id = idCategoriaAtual.Value;
+
+                categorias = categorias.Where(outraCategoria => outraCategoria.IdCategoria != id);
+            }
+
+            bool categoriaJaExiste = await categorias.AnyAsync(outraCategoria =>
+                outraCategoria.Nome == categoria.Nome);
+
+            if (categoriaJaExiste)
+            {
+                ModelState.AddModelError("Nome", "Já existe uma categoria com esse nome.");
             }
         }
     }
