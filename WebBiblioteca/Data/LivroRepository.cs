@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
@@ -104,6 +104,20 @@ namespace WebBiblioteca.Data
         {
             return await _context.Categorias
                 .AnyAsync(categoria => categoria.IdCategoria == id);
+        }
+
+        public async Task<bool> TemHistoricoEmprestimosAsync(int idLivro)
+        {
+            // Inclui empréstimos devolvidos: a história deve ser preservada.
+            return await _context.EmprestimoDetalhes
+                .AnyAsync(detalhe => detalhe.IdLivro == idLivro);
+        }
+
+        public async Task<bool> TemReservasAsync(int idLivro)
+        {
+            // Inclui reservas inativas porque a chave estrangeira impede a eliminação.
+            return await _context.Reservas
+                .AnyAsync(reserva => reserva.IdLivro == idLivro);
         }
     }
 }

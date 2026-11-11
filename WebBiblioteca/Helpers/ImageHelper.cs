@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using System;
 using System.IO;
 using System.Threading.Tasks;
@@ -23,8 +23,9 @@ namespace WebBiblioteca.Helpers
                 using FileStream stream = new FileStream(path, FileMode.CreateNew);
                 await imageFile.CopyToAsync(stream);
             }
-            catch (IOException)
+            catch
             {
+                // Remover ficheiros parciais também em falhas de acesso ou outras exceções.
                 TryDeleteImage(imageUrl, folder);
                 throw;
             }

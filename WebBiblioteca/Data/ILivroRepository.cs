@@ -1,4 +1,4 @@
-﻿using WebBiblioteca.Models;
+using WebBiblioteca.Models;
 
 namespace WebBiblioteca.Data
 {
@@ -11,5 +11,7 @@ namespace WebBiblioteca.Data
         Task UpdateAsync(Livro livro);
         Task DeleteAsync(Livro livro);
         Task<bool> CategoriaExisteAsync(int id);
+        Task<bool> TemHistoricoEmprestimosAsync(int idLivro);
+        Task<bool> TemReservasAsync(int idLivro);
     }
 }
