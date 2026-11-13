@@ -15,6 +15,11 @@
         maximo >= DateTime.Today;
 }
 
+@section Styles {
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" />
+}
+
 <h2>Alterar prazo</h2>
 
 <partial name="_Resumo" model="emprestimo" />
@@ -80,8 +85,32 @@
 
 </form>
 
-@section Scripts
-{
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/pt.js"></script>
+
+    <script>
+        const campoData = document.getElementById("PrazoDevolucao");
+
+        if (campoData && !campoData.disabled && window.flatpickr && flatpickr.l10ns.pt) {
+            const minimo = campoData.min;
+            const maximo = campoData.max;
+
+            campoData.type = "text";
+
+            flatpickr(campoData, {
+                locale: "pt",
+                dateFormat: "Y-m-d",
+                altInput: true,
+                altFormat: "d/m/Y",
+                minDate: minimo,
+                maxDate: maximo,
+                disableMobile: true
+            });
+        }
+    </script>
+
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }

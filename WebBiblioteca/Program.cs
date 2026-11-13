@@ -50,8 +50,31 @@ namespace WebBiblioteca
             {
                 app.UseExceptionHandler("/Home/Error");
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+                app.UseWhen(
+                context => context.Request.Path.StartsWithSegments("/api"),
+                apiApp =>
+                {
+                    apiApp.UseExceptionHandler(errorApp =>
+                    {
+                        errorApp.Run(async context =>
+                        {
+                            context.Response.StatusCode = 500;
+
+                            await context.Response.WriteAsJsonAsync(new
+                            {
+                                mensagem = "Ocorreu um erro interno no servidor."
+                            });
+                        });
+                    });
+                });
                 app.UseHsts();
             }
+
+            app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api"),
+                        appBuilder =>
+                        {
+                            appBuilder.UseStatusCodePagesWithReExecute("/Home/Error");
+                        });
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
