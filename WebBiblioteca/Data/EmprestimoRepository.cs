@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using WebBiblioteca.Models;
+using WebBiblioteca.Helpers;
 
 namespace WebBiblioteca.Data
 {
@@ -8,11 +9,13 @@ namespace WebBiblioteca.Data
     {
         private readonly DataContext _context;
         private readonly IReservaRepository _reservaRepository;
+        private readonly IMailHelper _mailHelper;
 
-        public EmprestimoRepository(DataContext context, IReservaRepository reservaRepository)
+        public EmprestimoRepository(DataContext context, IReservaRepository reservaRepository, IMailHelper mailHelper)
         {
             _context = context;
             _reservaRepository = reservaRepository;
+            _mailHelper = mailHelper;
         }
 
         public IQueryable<Emprestimo> GetAll(bool incluirEliminados = false)
@@ -322,9 +325,42 @@ namespace WebBiblioteca.Data
 
             await _reservaRepository.PrepararDisponibilidadeAsync(detalhe.Livro, agora);
 
-            // Devolução, exemplar, penalização e disponibilidade da fila são guardados juntos.
+            // Identificar leitores cujas reservas ficaram disponíveis agora.
+            var idsLeitores = _context.ChangeTracker.Entries<Reserva>()
+                .Where(entrada =>
+                    entrada.Entity.IdLivro == detalhe.Livro.IdLivro &&
+                    entrada.Entity.Ativa &&
+                    entrada.Entity.DataDisponivel.HasValue &&
+                    entrada.Property(reserva => reserva.DataDisponivel).OriginalValue == null)
+                .Select(entrada => entrada.Entity.IdLeitor)
+                .Distinct()
+                .ToList();
+
+            var emails = await _context.Leitores
+                .AsNoTracking()
+                .Where(leitor => idsLeitores.Contains(leitor.IdLeitor))
+                .Select(leitor => leitor.User != null && leitor.User.Email != null
+                    ? leitor.User.Email
+                    : leitor.Email)
+                .Distinct()
+                .ToListAsync();
+
+            // Guardar primeiro a devolução e as alterações das reservas.
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
+
+            // Notificar apenas depois de confirmar a transação.
+            foreach (var email in emails)
+            {
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    _mailHelper.SendEmail(
+                        email,
+                        "Reserva disponível para levantamento",
+                        "<p>A sua reserva já está disponível para levantamento.</p>" +
+                        "<p>Consulte as suas reservas para verificar o prazo.</p>");
+                }
+            }
 
             return true;
         }
