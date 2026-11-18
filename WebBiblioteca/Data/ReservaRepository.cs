@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
+using WebBiblioteca.Helpers;
 
 namespace WebBiblioteca.Data
 {
@@ -8,10 +9,12 @@ namespace WebBiblioteca.Data
         // O enunciado indica X dias na tarefa. Então vou manter os 3 dias da Biblioteca anterior.
         private const int DiasLevantamento = 3;
         private readonly DataContext _context;
+        private readonly IMailHelper _mailHelper;
 
-        public ReservaRepository(DataContext context)
+        public ReservaRepository(DataContext context, IMailHelper mailHelper)
         {
             _context = context;
+            _mailHelper = mailHelper;
         }
 
         public async Task AtualizarReservasExpiradasAsync()
@@ -60,6 +63,32 @@ namespace WebBiblioteca.Data
             // Expirações, posições e novas disponibilidades são guardadas em conjunto.
             // Esta operação termina antes de se preparar um empréstimo ou devolução.
             await _context.SaveChangesAsync();
+
+            // Procurar reservas que ficaram disponíveis nesta operação.
+            var reservasDisponiveis = await _context.Reservas
+                .Include(reserva => reserva.Leitor)
+                .ThenInclude(leitor => leitor!.User)
+                .Where(reserva =>
+                    idsLivros.Contains(reserva.IdLivro) &&
+                    reserva.Ativa &&
+                    reserva.DataDisponivel == agora)
+                .ToListAsync();
+
+            // Notificar os leitores que receberam disponibilidade.
+            foreach (var reservaDisponivel in reservasDisponiveis)
+            {
+                string? email = reservaDisponivel.Leitor?.User?.Email
+                    ?? reservaDisponivel.Leitor?.Email;
+
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    _mailHelper.SendEmail(
+                        email,
+                        "Reserva disponível para levantamento",
+                        "<p>A sua reserva já está disponível para levantamento.</p>" +
+                        "<p>Consulte as suas reservas para verificar o prazo.</p>");
+                }
+            }
         }
 
         public IQueryable<Reserva> GetAll()
@@ -280,8 +309,34 @@ namespace WebBiblioteca.Data
             // A disponibilidade libertada passa aos primeiros leitores da fila.
             await PrepararDisponibilidadeAsync(livro, agora, reserva.IdReserva);
 
-            // Cancelar uma reserva não é devolver um livro: os exemplares não aumentam.
+            // Guardar o cancelamento e as alterações da fila.
             await _context.SaveChangesAsync();
+
+            // Procurar reservas disponibilizadas nesta operação.
+            var reservasDisponiveis = await _context.Reservas
+                .Include(reservaDaLista => reservaDaLista.Leitor)
+                .ThenInclude(leitor => leitor!.User)
+                .Where(reservaDaLista =>
+                    reservaDaLista.IdLivro == livro.IdLivro &&
+                    reservaDaLista.Ativa &&
+                    reservaDaLista.DataDisponivel == agora)
+                .ToListAsync();
+
+            // Enviar email aos leitores.
+            foreach (var reservaDisponivel in reservasDisponiveis)
+            {
+                string? email = reservaDisponivel.Leitor?.User?.Email
+                    ?? reservaDisponivel.Leitor?.Email;
+
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    _mailHelper.SendEmail(
+                        email,
+                        "Reserva disponível para levantamento",
+                        "<p>A sua reserva já está disponível para levantamento.</p>" +
+                        "<p>Consulte as suas reservas para verificar o prazo.</p>");
+                }
+            }
 
             return true;
         }
