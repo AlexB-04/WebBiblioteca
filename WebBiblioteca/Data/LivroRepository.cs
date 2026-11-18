@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebBiblioteca.Models;
+using WebBiblioteca.Helpers;
 
 namespace WebBiblioteca.Data
 {
@@ -7,11 +8,14 @@ namespace WebBiblioteca.Data
     {
         private readonly DataContext _context;
         private readonly IReservaRepository _reservaRepository;
+        private readonly IMailHelper _mailHelper;
 
-        public LivroRepository(DataContext context, IReservaRepository reservaRepository)
+        public LivroRepository(DataContext context, IReservaRepository reservaRepository,
+            IMailHelper mailHelper)
         {
             _context = context;
             _reservaRepository = reservaRepository;
+            _mailHelper = mailHelper;
         }
 
         public IQueryable<Livro> GetAll()
@@ -86,10 +90,39 @@ namespace WebBiblioteca.Data
 
             _context.Livros.Update(livro);
 
+            DateTime agora = DateTime.Now;
+
             // Atualizar as reservas quando os exemplares disponíveis mudam.
-            // O livro, a fila e o histórico são guardados no mesmo SaveChangesAsync.
-            await _reservaRepository.PrepararDisponibilidadeAsync(livro, DateTime.Now);
+            await _reservaRepository.PrepararDisponibilidadeAsync(livro, agora);
+
+            // Guardar o livro, a fila e o histórico.
             await _context.SaveChangesAsync();
+
+            // Procurar reservas disponibilizadas nesta operação.
+            var reservasDisponiveis = await _context.Reservas
+                .Include(reserva => reserva.Leitor)
+                .ThenInclude(leitor => leitor!.User)
+                .Where(reserva =>
+                    reserva.IdLivro == livro.IdLivro &&
+                    reserva.Ativa &&
+                    reserva.DataDisponivel == agora)
+                .ToListAsync();
+
+            // Notificar os leitores.
+            foreach (var reservaDisponivel in reservasDisponiveis)
+            {
+                string? email = reservaDisponivel.Leitor?.User?.Email
+                    ?? reservaDisponivel.Leitor?.Email;
+
+                if (!string.IsNullOrWhiteSpace(email))
+                {
+                    _mailHelper.SendEmail(
+                        email,
+                        "Reserva disponível para levantamento",
+                        "<p>A sua reserva já está disponível para levantamento.</p>" +
+                        "<p>Consulte as suas reservas para verificar o prazo.</p>");
+                }
+            }
         }
 
         public async Task DeleteAsync(Livro livro)
