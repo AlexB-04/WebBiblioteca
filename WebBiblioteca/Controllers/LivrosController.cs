@@ -19,13 +19,19 @@ namespace WebBiblioteca.Controllers
         private readonly IImageHelper _imageHelper;
         private readonly ILogger<LivrosController> _logger;
 
+        private readonly IEmprestimoRepository _emprestimoRepository;
+
         public LivrosController(ILivroRepository livroRepository,
-            ICategoriaRepository categoriaRepository, IReservaRepository reservaRepository,
-            IImageHelper imageHelper, ILogger<LivrosController> logger)
+            ICategoriaRepository categoriaRepository,
+            IReservaRepository reservaRepository,
+            IEmprestimoRepository emprestimoRepository,
+            IImageHelper imageHelper,
+            ILogger<LivrosController> logger)
         {
             _livroRepository = livroRepository;
             _categoriaRepository = categoriaRepository;
             _reservaRepository = reservaRepository;
+            _emprestimoRepository = emprestimoRepository;
             _imageHelper = imageHelper;
             _logger = logger;
         }
@@ -62,10 +68,11 @@ namespace WebBiblioteca.Controllers
             return View(await livros.OrderBy(livro => livro.Titulo).ToListAsync());
         }
 
+
         [AllowAnonymous]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null)
+            if (id == null || id.Value <= 0)
             {
                 return NotFound();
             }
@@ -76,6 +83,36 @@ namespace WebBiblioteca.Controllers
             {
                 return NotFound();
             }
+
+            // Consultar os empréstimos que ainda não foram devolvidos.
+            var prazos = await _emprestimoRepository.GetAll()
+                .Where(emprestimo => emprestimo.Detalhes.Any(detalhe =>
+                    detalhe.IdLivro == livro.IdLivro &&
+                    detalhe.DataDevolucao == null))
+                .Select(emprestimo => emprestimo.PrazoDevolucao)
+                .ToListAsync();
+
+            DateTime hoje = DateTime.Today;
+
+            // Procurar a próxima devolução prevista.
+            DateTime? proximaDevolucao = prazos
+                .Where(prazo => prazo.Date >= hoje)
+                .OrderBy(prazo => prazo)
+                .Select(prazo => (DateTime?)prazo)
+                .FirstOrDefault();
+
+            ViewBag.ProximaDevolucao = proximaDevolucao;
+
+            // Identificar empréstimos com prazo ultrapassado.
+            ViewBag.ExistemAtrasos = prazos
+                .Any(prazo => prazo.Date < hoje);
+
+            // Contar apenas as reservas que aguardam na fila.
+            ViewBag.ReservasEmEspera = await _reservaRepository.GetAll()
+                .CountAsync(reserva =>
+                    reserva.IdLivro == livro.IdLivro &&
+                    reserva.Ativa &&
+                    reserva.DataDisponivel == null);
 
             return View(livro);
         }

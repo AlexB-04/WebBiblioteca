@@ -123,7 +123,19 @@ namespace WebBiblioteca.Controllers
             // Uma intenção anónima não cria qualquer reserva na base de dados.
             if (User.Identity?.IsAuthenticated != true)
             {
-                return RedirectToAction("Register", "Account");
+                if (!idLivro.HasValue || idLivro.Value <= 0)
+                {
+                    return RedirectToAction("Index", "Livros");
+                }
+
+                var livro = await _livroRepository.GetByIdAsync(idLivro.Value);
+
+                if (livro == null)
+                {
+                    return NotFound();
+                }
+
+                return RedirectToAction("Register", "Account", new { idLivro = idLivro.Value });
             }
 
             if (!User.IsInRole("Funcionario") && !User.IsInRole("Leitor"))

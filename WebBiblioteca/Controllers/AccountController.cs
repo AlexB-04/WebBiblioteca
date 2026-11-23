@@ -156,9 +156,10 @@ namespace WebBiblioteca.Controllers
             return View(model);
         }
 
+
         [HttpGet]
         [AllowAnonymous]
-        public IActionResult Register()
+        public IActionResult Register(int? idLivro)
         {
             // O registo é para o próprio leitor, antes de iniciar sessão.
             if (User.Identity?.IsAuthenticated == true)
@@ -166,7 +167,12 @@ namespace WebBiblioteca.Controllers
                 return Forbid();
             }
 
-            return View(new RegisterNewUserViewModel());
+            return View(new RegisterNewUserViewModel
+            {
+                IdLivro = idLivro.HasValue && idLivro.Value > 0
+                    ? idLivro
+                    : null
+            });
         }
 
         [HttpPost]
@@ -230,6 +236,28 @@ namespace WebBiblioteca.Controllers
             {
                 ModelState.AddModelError(string.Empty, "Não foi possível criar a conta. Verifique se o email já está registado.");
                 return View(model);
+            }
+
+
+            // Guardar o livro escolhido depois do registo.
+            // A reserva ainda não é criada.
+            if (model.IdLivro.HasValue && model.IdLivro.Value > 0)
+            {
+                Response.Cookies.Append(
+                    "ReservaPendente",
+                    $"{user.Id}|{model.IdLivro.Value}",
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = true,
+                        SameSite = SameSiteMode.Lax,
+                        MaxAge = TimeSpan.FromDays(14),
+                        IsEssential = true
+                    });
+            }
+            else
+            {
+                Response.Cookies.Delete("ReservaPendente");
             }
 
             // Não iniciar sessão antes da confirmação e da alteração da palavra-passe.
@@ -712,12 +740,39 @@ namespace WebBiblioteca.Controllers
                 var result = await _userHelper.LoginAsync(model);
                 if (result.Succeeded)
                 {
-                    if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                    var user = await _userHelper.GetUserByEmailAsync(
+                        model.Username.Trim());
+
+                    // Continuar a reserva escolhida durante o registo.
+                    string? reservaPendente = Request.Cookies["ReservaPendente"];
+
+                    if (user != null && !string.IsNullOrEmpty(reservaPendente))
+                    {
+                        string[] partes = reservaPendente.Split('|');
+
+                        if (partes.Length == 2 &&
+                            partes[0] == user.Id &&
+                            int.TryParse(partes[1], out int idLivro) &&
+                            idLivro > 0 &&
+                            await _userHelper.IsUserInRoleAsync(user, "Leitor"))
+                        {
+                            // A intenção pertence ao leitor autenticado.
+                            Response.Cookies.Delete("ReservaPendente");
+
+                            // A reserva ainda não é criada.
+                            return RedirectToAction(
+                                "Create",
+                                "Reservas",
+                                new { idLivro });
+                        }
+                    }
+
+                    // Manter o redirecionamento original.
+                    if (!string.IsNullOrEmpty(returnUrl) &&
+                        Url.IsLocalUrl(returnUrl))
                     {
                         return Redirect(returnUrl);
                     }
-
-                    var user = await _userHelper.GetUserByEmailAsync(model.Username.Trim());
 
                     if (user != null && await _userHelper.IsUserInRoleAsync(user, "Funcionario"))
                     {

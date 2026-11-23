@@ -28,5 +28,6 @@ namespace WebBiblioteca.Models
         [Display(Name = "Tipo de leitor")]
         [RegularExpression("^(Aluno|Professor|Público em Geral)$", ErrorMessage = "Selecione Aluno, Professor ou Público em Geral.")]
         public string TipoLeitor { get; set; } = string.Empty;
+        public int? IdLivro { get; set; }
     }
 }

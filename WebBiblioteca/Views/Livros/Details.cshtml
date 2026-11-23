@@ -83,6 +83,61 @@
     </div>
 </div>
 
+
+@{
+    DateTime? proximaDevolucao = ViewBag.ProximaDevolucao as DateTime?;
+
+    int reservasEmEspera = ViewBag.ReservasEmEspera is int total
+        ? total
+        : 0;
+
+    bool existemAtrasos = ViewBag.ExistemAtrasos is bool atrasos
+        && atrasos;
+}
+
+<div class="card mt-3 mb-3">
+    <div class="card-body">
+        <h3 class="h5">Disponibilidade futura</h3>
+
+        <dl class="row">
+            <dt class="col-sm-4">Exemplares disponíveis</dt>
+            <dd class="col-sm-8">
+                @Model.ExemplaresDisponiveis
+            </dd>
+
+            <dt class="col-sm-4">Reservas em espera</dt>
+            <dd class="col-sm-8">
+                @reservasEmEspera
+            </dd>
+
+            <dt class="col-sm-4">Próxima devolução prevista</dt>
+            <dd class="col-sm-8">
+                @if (proximaDevolucao.HasValue)
+                {
+                    @proximaDevolucao.Value.ToString("dd/MM/yyyy")
+                }
+                else
+                {
+                    <span>Sem data futura prevista</span>
+                }
+            </dd>
+        </dl>
+
+        @if (existemAtrasos)
+        {
+            <p class="text-warning">
+                Existem empréstimos com prazo de devolução ultrapassado.
+            </p>
+        }
+
+        <p class="text-muted small mb-0">
+            As datas são apenas previsões.
+            A disponibilidade depende das devoluções
+            e da ordem da fila de reservas.
+        </p>
+    </div>
+</div>
+
 <div>
     @if (User.IsInRole("Admin") || User.IsInRole("Funcionario"))
     {
