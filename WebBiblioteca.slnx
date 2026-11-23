@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="WebBiblioteca.Mobile/WebBiblioteca.Mobile.csproj" Id="4e081441-21fd-4ebc-a8be-db0e97002b95" />
   <Project Path="WebBiblioteca/WebBiblioteca.csproj" />
 </Solution>

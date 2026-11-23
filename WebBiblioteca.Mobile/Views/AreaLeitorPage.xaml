@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="WebBiblioteca.Mobile.Views.AreaLeitorPage"
+    Title="Área do Leitor">
+
+    <Grid Padding="12"
+          RowDefinitions="Auto,*"
+          RowSpacing="10">
+
+        <HorizontalStackLayout Grid.Row="0"
+                               Spacing="10">
+
+            <Button Text="Iniciar sessão"
+                    Clicked="OnLoginClicked" />
+
+            <Button Text="Histórico"
+                    Clicked="OnHistoricoClicked" />
+
+        </HorizontalStackLayout>
+
+        <WebView x:Name="LeitorWebView"
+                 Grid.Row="1"
+                 Source="https://webbiblioteca-alexb.runasp.net/Account/Login" />
+
+    </Grid>
+</ContentPage>

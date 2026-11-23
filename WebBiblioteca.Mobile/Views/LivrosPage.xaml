@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="WebBiblioteca.Mobile.Views.LivrosPage"
+    Title="Livros">
+
+    <Grid Padding="20"
+        RowDefinitions="Auto,Auto,Auto,Auto,Auto,*"
+        RowSpacing="12">
+
+
+        <Label Grid.Row="0"
+               Text="Catálogo de Livros"
+               FontSize="26"
+               FontAttributes="Bold" />
+
+        <HorizontalStackLayout Grid.Row="1" Spacing="15">
+
+            <Button Text="Atualizar"
+                    Clicked="OnAtualizarClicked" />
+
+            <ActivityIndicator
+                IsRunning="{Binding EstaACarregar}"
+                IsVisible="{Binding EstaACarregar}"
+                Color="Blue" />
+
+        </HorizontalStackLayout>
+
+        <SearchBar Grid.Row="2"
+           Placeholder="Pesquisar livro pelo título..."
+           Text="{Binding Pesquisa}" />
+
+        <Picker Grid.Row="3"
+        Title="Filtrar disponibilidade"
+        SelectedItem="{Binding FiltroDisponibilidade, Mode=TwoWay}">
+
+            <Picker.Items>
+                <x:String>Todos</x:String>
+                <x:String>Disponíveis</x:String>
+                <x:String>Indisponíveis</x:String>
+            </Picker.Items>
+
+        </Picker>
+
+        <Label Grid.Row="4"
+               Text="{Binding Mensagem}"
+               TextColor="Gray" />
+
+        <CollectionView Grid.Row="5"
+                ItemsSource="{Binding Livros}"
+                SelectionMode="Single"
+                SelectionChanged="OnLivroSelecionado">
+
+
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+
+                    <Border Stroke="#CCC"
+                            StrokeThickness="1"
+                            Padding="14"
+                            Margin="0,5">
+
+                        <VerticalStackLayout Spacing="5">
+
+                            <Label Text="{Binding Titulo}"
+                                   FontSize="20"
+                                   FontAttributes="Bold" />
+
+                            <Label Text="{Binding Autor}" />
+
+                            <Label Text="{Binding CategoriaAtual.Nome}" />
+
+                            <Label Text="{Binding ExemplaresDisponiveis,
+                                    StringFormat='Disponíveis: {0}'}" />
+
+                        </VerticalStackLayout>
+                    </Border>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Shell
+    x:Class="WebBiblioteca.Mobile.AppShell"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:views="clr-namespace:WebBiblioteca.Mobile.Views"
+    Title="WebBiblioteca">
+
+    <TabBar>
+
+        <ShellContent
+            Title="Livros"
+            ContentTemplate="{DataTemplate views:LivrosPage}"
+            Route="LivrosPage" />
+
+        <ShellContent
+            Title="Área do Leitor"
+            ContentTemplate="{DataTemplate views:AreaLeitorPage}"
+            Route="AreaLeitorPage" />
+
+    </TabBar>
+</Shell>

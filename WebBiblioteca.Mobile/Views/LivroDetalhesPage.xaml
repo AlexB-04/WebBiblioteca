@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    x:Class="WebBiblioteca.Mobile.Views.LivroDetalhesPage"
+    Title="Detalhes do Livro">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="15">
+
+            <Label Text="{Binding Titulo}" FontSize="26" FontAttributes="Bold" />
+
+            <Label Text="{Binding Autor, StringFormat='Autor: {0}'}" />
+
+            <Label Text="{Binding Editora, StringFormat='Editora: {0}'}" />
+
+            <Label Text="{Binding AnoPublicacao, StringFormat='Ano: {0}'}" />
+
+            <Label Text="{Binding Genero, StringFormat='Género: {0}'}" />
+
+            <Label Text="{Binding CategoriaAtual.Nome, StringFormat='Categoria: {0}'}" />
+
+            <Label Text="{Binding ExemplaresDisponiveis, StringFormat='Exemplares disponíveis: {0}'}" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
