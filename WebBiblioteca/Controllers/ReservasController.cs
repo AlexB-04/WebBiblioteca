@@ -104,6 +104,19 @@ namespace WebBiblioteca.Controllers
                     return NaoEncontrado();
                 }
 
+                ViewBag.PodeAdiar = false;
+
+                if (User.IsInRole("Leitor") && !User.IsInRole("Funcionario") &&
+                    reserva.Ativa && !reserva.DataDisponivel.HasValue)
+                {
+                    // A posição na fila tem de ter pelo menos um leitor em espera atrás.
+                    ViewBag.PodeAdiar = await _reservaRepository.GetAll().AnyAsync(item =>
+                        item.IdLivro == reserva.IdLivro && item.Ativa &&
+                        !item.DataDisponivel.HasValue &&
+                        (item.Ordem > reserva.Ordem ||
+                         (item.Ordem == reserva.Ordem && item.IdReserva > reserva.IdReserva)));
+                }
+
                 return View(reserva);
             }
             catch (DbUpdateException ex)
@@ -443,6 +456,68 @@ namespace WebBiblioteca.Controllers
                 }
 
                 TempData["ReservaMessage"] = "Reserva cancelada. A fila foi atualizada.";
+                return RedirectToAction("Details", new { id });
+            }
+            catch (DbUpdateException ex)
+            {
+                return ErroDados(ex);
+            }
+            catch (DbException ex)
+            {
+                return ErroDados(ex);
+            }
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Leitor")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Adiar(int id)
+        {
+            if (id <= 0)
+            {
+                return NaoEncontrado();
+            }
+
+            // Uma conta que também tenha papel de funcionário não pode
+            // usar esta ação para adiar reservas de outros leitores.
+            if (User.IsInRole("Funcionario"))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var leitor = await ObterLeitorAtualAsync();
+                if (leitor == null)
+                {
+                    return AcessoLeitorInvalido();
+                }
+
+                // Não revelar nem alterar reservas pertencentes a outro leitor.
+                var reserva = await _reservaRepository.GetAll()
+                    .FirstOrDefaultAsync(item => item.IdReserva == id &&
+                        item.IdLeitor == leitor.IdLeitor);
+
+                if (reserva == null)
+                {
+                    return NaoEncontrado();
+                }
+
+                if (!reserva.Ativa || reserva.DataDisponivel.HasValue)
+                {
+                    return OperacaoInvalida("Só é possível adiar uma reserva ativa que ainda aguarda o livro.");
+                }
+
+                // O repositório confirma novamente o estado e a propriedade
+                // dentro da transação antes de reordenar a fila.
+                bool adiada = await _reservaRepository.AdiarAsync(id, leitor.IdLeitor);
+                if (!adiada)
+                {
+                    return OperacaoInvalida(
+                        "Não é possível adiar esta reserva. Pode já ser a última da fila ou o estado pode ter mudado.");
+                }
+
+                TempData["ReservaMessage"] = "Reserva adiada para o fim da fila de espera.";
                 return RedirectToAction("Details", new { id });
             }
             catch (DbUpdateException ex)

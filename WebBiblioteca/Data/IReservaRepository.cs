@@ -16,6 +16,9 @@ namespace WebBiblioteca.Data
 
         Task<bool> UpdateAsync(int id, int idLivro);
 
+        // O leitor pode ceder a sua posição, mantendo o mesmo livro e reserva.
+        Task<bool> AdiarAsync(int id, int idLeitor);
+
         Task<bool> DeleteAsync(int id);
 
         Task<bool> ReservaAtivaExisteAsync(int idLeitor, int idLivro);

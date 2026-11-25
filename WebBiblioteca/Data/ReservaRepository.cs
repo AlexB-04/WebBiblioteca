@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.Data;
 using WebBiblioteca.Models;
 using WebBiblioteca.Helpers;
 
@@ -264,6 +265,137 @@ namespace WebBiblioteca.Data
             // A reserva, a fila e o histórico são guardados na mesma operação.
             await _context.SaveChangesAsync();
 
+            return true;
+        }
+
+        public async Task<bool> AdiarAsync(int id, int idLeitor)
+        {
+            // Processar prazos vencidos antes de iniciar a transação da fila.
+            // As notificações por expiração pertencem ao processo já existente.
+            await AtualizarReservasExpiradasAsync();
+
+            if (id <= 0 || idLeitor <= 0)
+            {
+                return false;
+            }
+
+            // A leitura, a reordenação e o histórico ficam na mesma transação.
+            await using var transaction = await _context.Database.BeginTransactionAsync(
+                IsolationLevel.Serializable);
+
+            // A verificação de propriedade também acontece no repositório.
+            var reserva = await _context.Reservas
+                .FirstOrDefaultAsync(item => item.IdReserva == id &&
+                    item.IdLeitor == idLeitor);
+
+            if (reserva == null || !reserva.Ativa || reserva.DataDisponivel.HasValue)
+            {
+                return false;
+            }
+
+            // Incluir todas as reservas ativas para manter a posição das que já
+            // estão disponíveis; apenas as que aguardam podem ser adiadas.
+            var fila = await _context.Reservas
+                .Where(item => item.IdLivro == reserva.IdLivro && item.Ativa)
+                .OrderBy(item => item.Ordem)
+                .ThenBy(item => item.IdReserva)
+                .ToListAsync();
+
+            var emEspera = fila
+                .Where(item => !item.DataDisponivel.HasValue)
+                .ToList();
+
+            int indiceAtual = emEspera.FindIndex(item => item.IdReserva == id);
+
+            // Se é a última (ou a única) reserva em espera, não mudar nada.
+            if (indiceAtual < 0 || indiceAtual == emEspera.Count - 1)
+            {
+                return false;
+            }
+
+            var livro = await _context.Livros
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.IdLivro == reserva.IdLivro);
+
+            if (livro == null)
+            {
+                return false;
+            }
+
+            int ordemAnterior = reserva.Ordem;
+            DateTime agora = DateTime.Now;
+
+            emEspera.RemoveAt(indiceAtual);
+            emEspera.Add(reserva);
+
+            // Recolocar os leitores em espera nos seus lugares, sem deslocar
+            // os exemplares que já estão disponíveis para levantamento.
+            var filaNova = new List<Reserva>();
+            int indiceEspera = 0;
+
+            foreach (var item in fila)
+            {
+                if (item.DataDisponivel.HasValue)
+                {
+                    filaNova.Add(item);
+                }
+                else
+                {
+                    filaNova.Add(emEspera[indiceEspera]);
+                    indiceEspera++;
+                }
+            }
+
+            int ordemNova = filaNova.FindIndex(item => item.IdReserva == id) + 1;
+
+            for (int i = 0; i < filaNova.Count; i++)
+            {
+                var item = filaNova[i];
+                int ordemCalculada = i + 1;
+
+                if (item.Ordem == ordemCalculada)
+                {
+                    continue;
+                }
+
+                int ordemOriginal = item.Ordem;
+                item.Ordem = ordemCalculada;
+
+                // A reserva adiada recebe um único registo próprio abaixo.
+                if (item.IdReserva != id)
+                {
+                    await _context.ReservaAlteracoes.AddAsync(new ReservaAlteracao
+                    {
+                        IdReserva = item.IdReserva,
+                        DataAlteracao = agora,
+                        Acao = "AtualizacaoFila",
+                        IdLivroAnterior = item.IdLivro,
+                        LivroAnterior = livro.Titulo,
+                        IdLivroNovo = item.IdLivro,
+                        LivroNovo = livro.Titulo,
+                        OrdemAnterior = ordemOriginal,
+                        OrdemNova = ordemCalculada
+                    });
+                }
+            }
+
+            await _context.ReservaAlteracoes.AddAsync(new ReservaAlteracao
+            {
+                IdReserva = reserva.IdReserva,
+                DataAlteracao = agora,
+                Acao = "Adiamento",
+                IdLivroAnterior = reserva.IdLivro,
+                LivroAnterior = livro.Titulo,
+                IdLivroNovo = reserva.IdLivro,
+                LivroNovo = livro.Titulo,
+                OrdemAnterior = ordemAnterior,
+                OrdemNova = ordemNova
+            });
+
+            // Não alterar Ativa, IdLeitor, IdLivro, DataReserva nem DataDisponivel.
+            // Não chamar PrepararDisponibilidadeAsync nem enviar emails.
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
             return true;
         }
 

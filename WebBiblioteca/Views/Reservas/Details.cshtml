@@ -84,6 +84,19 @@ else
     </div>
 }
 
+@if (!funcionario && User.IsInRole("Leitor") && Model.Ativa &&
+    !Model.DataDisponivel.HasValue && ViewBag.PodeAdiar == true)
+{
+    <form asp-controller="Reservas" asp-action="Adiar"
+          asp-route-id="@Model.IdReserva" method="post" class="mb-3"
+          onsubmit="return confirm('A sua reserva passará para o fim da fila. Deseja continuar?');">
+        <button type="submit" class="btn btn-outline-warning">Adiar reserva</button>
+        <small class="text-muted d-block mt-1">
+            Ao adiar, a sua reserva passa para o fim da fila de espera do mesmo livro.
+        </small>
+    </form>
+}
+
 <p>
     @if (Model.Ativa && !Model.DataDisponivel.HasValue)
     {
