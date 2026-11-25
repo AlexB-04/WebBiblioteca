@@ -19,6 +19,8 @@ namespace WebBiblioteca.Models
         public string? ErroDados { get; set; }
 
         public List<DashboardEventoViewModel> EventosRecentes { get; set; } = new List<DashboardEventoViewModel>();
+
+        public List<AvisoFuncionario> AvisosAdministrador { get; set; } = new List<AvisoFuncionario>();
     }
 
     public class DashboardEventoViewModel

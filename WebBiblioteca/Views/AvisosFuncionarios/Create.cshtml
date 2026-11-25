@@ -1,0 +1,55 @@
+﻿@model WebBiblioteca.Models.CriarAvisoFuncionarioViewModel
+
+@{
+    ViewData["Title"] = "Criar aviso para funcionários";
+}
+
+<h2>Criar aviso para funcionários</h2>
+
+<p>
+    Escreva uma mensagem que será apresentada
+    no Dashboard dos funcionários.
+</p>
+
+@if (TempData["MensagemSucesso"] != null)
+{
+    <div class="alert alert-success"> @TempData["MensagemSucesso"] </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly"
+                 class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Mensagem"
+                       class="form-label"></label>
+
+                <textarea asp-for="Mensagem"
+                          class="form-control"
+                          rows="4"
+                          maxlength="500"></textarea>
+
+                <span asp-validation-for="Mensagem"
+                      class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                Publicar aviso
+            </button>
+
+            <a asp-controller="Home"
+               asp-action="Index"
+               class="btn btn-secondary">
+                Voltar
+            </a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

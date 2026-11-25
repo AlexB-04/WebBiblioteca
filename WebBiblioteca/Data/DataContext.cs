@@ -30,9 +30,17 @@ namespace WebBiblioteca.Data
 
         public DbSet<ReservaAlteracao> ReservaAlteracoes { get; set; }
 
+        public DbSet<AvisoFuncionario> AvisosFuncionarios { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<AvisoFuncionario>()
+                .HasKey(aviso => aviso.IdAvisoFuncionario);
+
+            modelBuilder.Entity<AvisoFuncionario>()
+                .ToTable("AvisosFuncionarios");
 
             modelBuilder.Entity<Categoria>()
                 .HasKey(categoria => categoria.IdCategoria);

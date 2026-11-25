@@ -90,6 +90,34 @@ else
         }
     </ul>
 
+    <h3 class="h5">Avisos do administrador</h3>
+
+    <p class="text-muted">
+        Mensagens publicadas pelo administrador para os funcionários.
+    </p>
+
+    @if (Model.AvisosAdministrador.Count == 0)
+    {
+        <div class="alert alert-info mb-4">
+            Ainda não existem avisos do administrador.
+        </div>
+    }
+    else
+    {
+        <ul class="list-group mb-4">
+            @foreach (var aviso in Model.AvisosAdministrador)
+            {
+                <li class="list-group-item">
+                    <div class="text-muted small mb-1">
+                        @aviso.DataCriacao.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+
+                    <div style="white-space: pre-wrap;">@aviso.Mensagem</div>
+                </li>
+            }
+        </ul>
+    }
+
     <h3 class="h5">Aceder aos serviços</h3>
     <div class="d-flex gap-2 flex-wrap mb-4">
         <a class="btn btn-outline-primary" asp-controller="Emprestimos" asp-action="Index">Gerir empréstimos e devoluções</a>

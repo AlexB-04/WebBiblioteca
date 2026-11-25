@@ -15,16 +15,19 @@ namespace WebBiblioteca.Controllers
         private readonly IReservaRepository _reservaRepository;
         private readonly ILeitorRepository _leitorRepository;
         private readonly ILogger<DashboardController> _logger;
+        private readonly IAvisoFuncionarioRepository _avisoRepository;
 
         public DashboardController(
             IEmprestimoRepository emprestimoRepository,
             IReservaRepository reservaRepository,
             ILeitorRepository leitorRepository,
+            IAvisoFuncionarioRepository avisoRepository,
             ILogger<DashboardController> logger)
         {
             _emprestimoRepository = emprestimoRepository;
             _reservaRepository = reservaRepository;
             _leitorRepository = leitorRepository;
+            _avisoRepository = avisoRepository;
             _logger = logger;
         }
 
@@ -67,6 +70,9 @@ namespace WebBiblioteca.Controllers
                         leitor.User != null && !leitor.User.Aprovado);
 
                 await CarregarEventosAsync(model);
+
+                model.AvisosAdministrador = await _avisoRepository.GetRecentesAsync(10);
+
                 return View(model);
             }
             catch (DbException ex)
@@ -186,6 +192,10 @@ namespace WebBiblioteca.Controllers
             else if (acao == "AtualizacaoFila")
             {
                 return "Posição na fila atualizada";
+            }
+            else if (acao == "Adiamento")
+            {
+                return "Reserva adiada na fila";
             }
 
             return "Alteração registada na reserva";

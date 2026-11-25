@@ -155,6 +155,27 @@ namespace WebBiblioteca.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("WebBiblioteca.Models.AvisoFuncionario", b =>
+                {
+                    b.Property<int>("IdAvisoFuncionario")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdAvisoFuncionario"));
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Mensagem")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("IdAvisoFuncionario");
+
+                    b.ToTable("AvisosFuncionarios", (string)null);
+                });
+
             modelBuilder.Entity("WebBiblioteca.Models.Categoria", b =>
                 {
                     b.Property<int>("IdCategoria")
