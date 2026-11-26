@@ -735,9 +735,11 @@ namespace WebBiblioteca.Controllers
         public async Task<IActionResult> Login(LoginViewModel model, string? returnUrl)
         {
             ViewBag.ReturnUrl = returnUrl;
+
             if (ModelState.IsValid)
             {
                 var result = await _userHelper.LoginAsync(model);
+
                 if (result.Succeeded)
                 {
                     var user = await _userHelper.GetUserByEmailAsync(
@@ -774,7 +776,9 @@ namespace WebBiblioteca.Controllers
                         return Redirect(returnUrl);
                     }
 
-                    if (user != null && await _userHelper.IsUserInRoleAsync(user, "Funcionario"))
+                    // Funcionários entram diretamente no Dashboard.
+                    if (user != null &&
+                        await _userHelper.IsUserInRoleAsync(user, "Funcionario"))
                     {
                         return RedirectToAction("Index", "Dashboard");
                     }
@@ -784,18 +788,25 @@ namespace WebBiblioteca.Controllers
 
                 if (result.IsNotAllowed)
                 {
-                    return RedirectToAction("ResetPassword", new { email = model.Username.Trim() });
+                    return RedirectToAction(
+                        "ResetPassword",
+                        new { email = model.Username.Trim() });
                 }
 
                 if (result.IsLockedOut)
                 {
-                    ModelState.AddModelError(string.Empty, "Demasiadas tentativas. Tente novamente dentro de alguns minutos.");
+                    ModelState.AddModelError(
+                        string.Empty,
+                        "Demasiadas tentativas. Tente novamente dentro de alguns minutos.");
                 }
                 else
                 {
-                    ModelState.AddModelError(string.Empty, "Não foi possível iniciar sessão. Verifique o email e a palavra-passe.");
+                    ModelState.AddModelError(
+                        string.Empty,
+                        "Não foi possível iniciar sessão. Verifique o email e a palavra-passe.");
                 }
             }
+
             return View(model);
         }
 
