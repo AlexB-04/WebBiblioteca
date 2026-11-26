@@ -33,3 +33,85 @@ body {
 .form-group {
     margin-bottom: 1rem;
 }
+
+
+/* WebBiblioteca - estilo da biblioteca */
+
+:root {
+    --biblioteca-fundo: #f8f6f0;
+    --biblioteca-papel: #fffefb;
+    --biblioteca-verde: #345744;
+    --biblioteca-borda: #e2ddd2;
+    --biblioteca-texto: #292d2a;
+}
+
+body {
+    background-color: var(--biblioteca-fundo);
+    color: var(--biblioteca-texto);
+}
+
+/* Navegação */
+
+.navbar.bg-white {
+    background-color: var(--biblioteca-papel) !important;
+    border-bottom-color: var(--biblioteca-borda) !important;
+}
+
+.navbar-brand {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: bold;
+    color: var(--biblioteca-verde) !important;
+}
+
+.navbar .nav-link.text-dark:hover {
+    color: var(--biblioteca-verde) !important;
+}
+
+/* Títulos */
+
+h1, h2 {
+    font-family: Georgia, "Times New Roman", serif;
+}
+
+/* Página inicial */
+
+main .bg-light.rounded-3 {
+    background-color: #f0ece3 !important;
+    border: 1px solid var(--biblioteca-borda);
+}
+
+/* Cartões */
+
+main .card,
+main .border.rounded {
+    background-color: var(--biblioteca-papel);
+    border-color: var(--biblioteca-borda) !important;
+    box-shadow: 0 2px 10px rgba(40, 45, 38, 0.04);
+}
+
+/* Formulários */
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #789b87;
+    box-shadow: 0 0 0 0.2rem rgba(52, 87, 68, 0.15);
+}
+
+/* Tabelas */
+
+.table thead th {
+    color: var(--biblioteca-verde);
+    border-bottom-color: var(--biblioteca-borda);
+}
+
+/* Rodapé */
+
+.footer a {
+    color: var(--biblioteca-verde);
+}
+
+.table-striped {
+    --bs-table-bg: #fffefb;
+    --bs-table-striped-bg: #f0ece3;
+    --bs-table-striped-color: #292d2a;
+}
